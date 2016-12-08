@@ -9,11 +9,11 @@ md5Hash(of: "")
 // should be e4d909c290d0fb1ca068ffaddf22cbd0
 md5Hash(of: "The quick brown fox jumps over the lazy dog.")
 
+let doorID = "ojvtpuvg"
+
 // Problem 1
 
 do {
-    let doorID = "ojvtpuvg"
-
     var password: String = ""
 
     for suffix in 0 ..< .max {
@@ -27,4 +27,14 @@ do {
     }
 
     let answer = password
+}
+
+// Problem 2
+
+do {
+    let answer = problem2(doorID: doorID, initialSuffix: 27_419_000, initialCharacters: [nil, "0", "5", "0", "c", "b", "b", "d"], progress: { (hashesTried, partialAnswer) in
+        _ = hashesTried
+        _ = partialAnswer
+    })
+    _ = answer
 }
