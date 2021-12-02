@@ -2,11 +2,11 @@
 
 (def numbers (map #(Integer. %) lines))
 
-(def triples (map vector numbers (drop 1 numbers) (drop 2 numbers)))
+(def triples (map list numbers (drop 1 numbers) (drop 2 numbers)))
 
 (def sums (map #(apply + %) triples))
 
-(def pairs-of-sums (map vector sums (drop 1 sums)))
+(def pairs-of-sums (map list sums (drop 1 sums)))
 
 (def increasing-pairs-of-sums (filter #(apply < %) pairs-of-sums))
 
