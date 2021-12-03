@@ -5,7 +5,7 @@
 
 (def bit-lines (map bits-for-line lines))
 
-(defn find-rating [condition bit-lines places]
+(defn find-rating-bits [condition bit-lines places]
     (cond
         (empty? places) bit-lines
         (= 1 (count bit-lines)) bit-lines
@@ -14,15 +14,15 @@
              grouped-bits (group-by identity (map #(% place) bit-lines))
              required-bit (apply condition
                 (map count [(grouped-bits false) (grouped-bits true)]))]
-            (find-rating
+            (find-rating-bits
                 condition
                 (filter (fn [line] (= required-bit (line place))) bit-lines)
                 (rest places)))))
 
-(def ratings
+(def ratings-bits
     (map
         (fn [condition]
-            (first (find-rating condition bit-lines
+            (first (find-rating-bits condition bit-lines
                 ((comp range count first) bit-lines))))
         [<= >]))
 
@@ -34,4 +34,4 @@
             [0 1]
             (range (count bit-vector))))))
 
-(apply * (map number-for-bits ratings))
+(apply * (map number-for-bits ratings-bits))
