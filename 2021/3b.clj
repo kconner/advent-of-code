@@ -5,21 +5,18 @@
 
 (def bit-lines (map bits-for-line lines))
 
-(defn counts-by-value [values]
-    (let [grouped (group-by identity values)]
-        (map count [(grouped false) (grouped true)])))
-
 (defn find-rating [condition bit-lines places]
     (cond
         (empty? places) bit-lines
         (= 1 (count bit-lines)) bit-lines
         :else (let
             [place (first places)
+             grouped-bits (group-by identity (map #(% place) bit-lines))
              required-bit (apply condition
-                (counts-by-value (map #(% place) bit-lines)))]
+                (map count [(grouped-bits false) (grouped-bits true)]))]
             (find-rating
                 condition
-                (filter #(= required-bit (% place)) bit-lines)
+                (filter (fn [line] (= required-bit (line place))) bit-lines)
                 (rest places)))))
 
 (def ratings
