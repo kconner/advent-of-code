@@ -15,11 +15,8 @@
         (= 1 (count bit-lines)) bit-lines
         :else (let
             [place (first places)
-             required-bit (apply condition (counts-by-value (map #(% place) bit-lines)))
-             kept-bit-lines (filter #(= required-bit (% place)) bit-lines)]
-                (if (= 1 (count kept-bit-lines))
-                    kept-bit-lines
-                    (find-rating condition kept-bit-lines (rest places))))))
+             required-bit (apply condition (counts-by-value (map #(% place) bit-lines)))]
+            (find-rating condition (filter #(= required-bit (% place)) bit-lines) (rest places)))))
 
 (def bit-places (range (count (first bit-lines))))
 
