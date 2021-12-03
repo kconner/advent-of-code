@@ -8,14 +8,13 @@
 (def bits-by-place (apply map list bits-by-line))
 
 (defn counts-by-value [values]
-    (apply hash-map
-        (mapcat (fn [[value list]] [value (count list)])
-            (group-by identity values))))
+    (let [grouped (group-by identity values)]
+        (map count [(grouped false) (grouped true)])))
 
 (def counts-by-bit-by-place (map counts-by-value bits-by-place))
 
 (def gamma-bits
-    (map (fn [counts] (< (counts false) (counts true)))
+    (map (fn [counts] (apply < counts))
         counts-by-bit-by-place))
 
 (def epsilon-bits (map not gamma-bits))
