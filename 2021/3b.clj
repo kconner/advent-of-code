@@ -22,9 +22,12 @@
                 (filter #(= required-bit (% place)) bit-lines)
                 (rest places)))))
 
-(def bit-places (range (count (first bit-lines))))
-
-(def ratings (map #(first (find-rating % bit-lines bit-places)) [<= >]))
+(def ratings
+    (map
+        (fn [condition]
+            (first (find-rating condition bit-lines
+                ((comp range count first) bit-lines))))
+        [<= >]))
 
 (defn number-for-bits [bits]
     (let [bit-vector (apply vector (reverse bits))]
