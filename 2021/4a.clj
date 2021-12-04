@@ -30,8 +30,8 @@
         indices))
 
 (defn has-board-won [board]
-  (or (has-board-won-by-axis board (fn [major minor] [major minor]))
-      (has-board-won-by-axis board (fn [major minor] [minor major]))))
+  (or (has-board-won-by-axis board #(vector %1 %2))
+      (has-board-won-by-axis board #(vector %2 %1))))
 
 (defn boards-after-draw [boards draw]
   (clojure.walk/postwalk
