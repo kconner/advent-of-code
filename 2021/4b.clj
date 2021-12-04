@@ -34,18 +34,12 @@
       (has-board-won-by-axis board (fn [major minor] [minor major]))))
 
 (defn boards-after-draw [boards draw]
-  (into [] conj
-        (map (fn [board]
-               (into []
-                     (map (fn [line]
-                            (into []
-                                  (map (fn [square]
-                                         (if (= (:value square) draw)
-                                           (assoc square :marked true)
-                                           square)))
-                                  line)))
-                     board))
-             boards)))
+  (clojure.walk/postwalk
+   (fn [item]
+     (if (= (:value item) draw)
+       (assoc item :marked true)
+       item))
+   boards))
 
 (defn find-winner [boards prior-draw draws]
   (if (empty? draws) :no-winner
