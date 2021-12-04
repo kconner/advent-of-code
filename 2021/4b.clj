@@ -57,6 +57,14 @@
          (first draws)
          (rest draws)))))
 
+(defn find-last-winner [boards prior-draw draws]
+  (cond (empty? draws) :no-winner
+        (= 1 (count boards)) (find-winner boards prior-draw draws)
+        :else (find-last-winner
+               (boards-after-draw (remove has-board-won boards) (first draws))
+               (first draws)
+               (rest draws))))
+
 (defn score-for-winner [winner]
   (* (:final-draw winner)
      (->> (:board winner)
@@ -65,4 +73,4 @@
           (map :value)
           (reduce +))))
 
-(score-for-winner (find-winner boards nil draws))
+(score-for-winner (find-last-winner boards nil draws))
