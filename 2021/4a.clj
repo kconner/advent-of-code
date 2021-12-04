@@ -9,16 +9,14 @@
   {:value (Integer. string)})
 
 (defn row-from-line [line]
-  (into [] (map square-from-string)
+  (mapv square-from-string
         (clojure.string/split line #"\s+")))
 
 (defn board-from-paragraph [paragraph]
-  (into [] (map row-from-line)
+  (mapv row-from-line
         (clojure.string/split paragraph #"\s*\n\s*")))
 
-(def boards
-  (into [] (map board-from-paragraph)
-        (rest paragraphs)))
+(def boards (mapv board-from-paragraph (rest paragraphs)))
 
 (def indices ((comp range count first) boards))
 
