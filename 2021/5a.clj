@@ -1,4 +1,4 @@
-(->> (clojure.string/split (slurp "5.txt") #"\n")
+(->> (clojure.string/split-lines (slurp "5.txt"))
      (map (fn [line] (clojure.string/split line #" -> |,")))
      (map (fn [ordinate-strings] (mapv #(Integer. %) ordinate-strings)))
      (filter (fn [[x0 y0 x1 y1]]
@@ -14,4 +14,4 @@
                (update map key (fn [value]
                                  (inc (or value 0))))) {})
      (filter (comp not zero? dec second))
-     (count))
+     count)
