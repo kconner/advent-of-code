@@ -14,6 +14,5 @@
      (reduce (fn [map key]
                (update map key (fn [value]
                                  (inc (or value 0))))) {})
-     (filter (fn [[_ value]]
-               (<= 2 value)))
+     (filter (comp not zero? dec second))
      (count))
