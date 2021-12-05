@@ -3,8 +3,7 @@
      (map (fn [ordinate-strings] (mapv #(Integer. %) ordinate-strings)))
      (mapcat (fn [[x0 y0 x1 y1]]
                (let [step [(compare x1 x0) (compare y1 y0)]]
-                 (reduce (fn [[point :as list] _]
-                           (conj list (map + point step)))
+                 (reduce (fn [[point :as all] _] (conj all (map + point step)))
                          (list [x0 y0])
                          (->> (map #(Math/abs (- %1 %2)) [x0 y0] [x1 y1])
                               (apply max)
