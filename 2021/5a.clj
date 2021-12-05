@@ -9,11 +9,10 @@
                (or (= x0 x1)
                    (= y0 y1))))
      (map sort)
-     (map (fn [[[x0 y0] [x1 y1]]]
-            (for [x (range x0 (+ 1 x1))
-                  y (range y0 (+ 1 y1))]
-              [x y])))
-     (apply concat)
+     (mapcat (fn [[[x0 y0] [x1 y1]]]
+               (for [x (range x0 (+ 1 x1))
+                     y (range y0 (+ 1 y1))]
+                 [x y])))
      (reduce (fn [map key]
                (update map key (fn [value]
                                  (inc (or value 0))))) {})
