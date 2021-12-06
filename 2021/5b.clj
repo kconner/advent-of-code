@@ -7,8 +7,7 @@
                                      (apply max)
                                      inc)]
                  (take step-count (iterate #(map + % step) [x0 y0])))))
-     (reduce (fn [map key]
-               (update map key (fn [value]
-                                 (inc (or value 0))))) {})
-     (filter (comp not zero? dec second))
+     frequencies
+     vals
+     (filter (partial <= 2))
      count)
