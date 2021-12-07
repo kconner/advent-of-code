@@ -2,12 +2,8 @@
                     (mapv #(Integer. %))
                     sort))
 
-(defn cost [from to]
-  (Math/abs (- from to)))
-
 (->> (range (inc (last locations)))
-     (map (fn [to]
-            (for [from locations]
-              (cost from to))))
-     (map #(reduce + %))
+     (pmap (fn [to]
+             (reduce + (for [from locations]
+                         (Math/abs (- from to))))))
      (reduce min))
