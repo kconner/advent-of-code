@@ -9,7 +9,7 @@
        (map (fn [[r c]] #{[(dec r) c] [r (inc c)]
                           [(inc r) c] [r (dec c)]}))
        (apply set/union)
-       (remove (partial basin))
+       (remove basin)
        (remove (fn [cell]
                  (let [value (cell-value lines cell)]
                    (or (nil? value)
