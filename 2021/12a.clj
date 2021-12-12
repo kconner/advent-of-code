@@ -12,7 +12,7 @@
         (->> (graph current)
              (filter (partial can-visit visits))
              (map (partial count-paths graph visits))
-             (reduce +)))))
+             (apply +)))))
 
 (def graph
   (->> (slurp "12.txt")
