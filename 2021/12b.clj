@@ -4,10 +4,14 @@
   (pos? (compare \a (first node))))
 
 (defn can-visit [visits node]
-  (or (is-big node) (not (visits node))))
+  (and (not= "start" node)
+       (or (is-big node) (not (visits node)) (not (visits :revisit)))))
+
+(defn visit [visits node]
+  (if (or (is-big node) (not (visits node))) node :revisit))
 
 (defn count-paths [graph visits current]
-  (let [visits (conj visits current)]
+  (let [visits (conj visits (visit visits current))]
     (if (= current "end") 1
         (->> (graph current)
              (filter (partial can-visit visits))
