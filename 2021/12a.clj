@@ -11,8 +11,9 @@
     (if (= current "end") 1
         (->> (graph current)
              (filter (partial is-big-or-unvisited visited))
-             (map (fn [next] (count-paths graph visited next)))
+             (map (partial count-paths graph visited))
              (reduce +)))))
+
 (def graph
   (->> (slurp "12.txt")
        string/split-lines
