@@ -18,7 +18,7 @@
   (->> (slurp "12.txt")
        string/split-lines
        (map #(string/split % #"-"))
-       (map (fn [[a b]] {a (list b) b (list a)}))
+       (map (fn [[a b]] {a (list b), b (list a)}))
        (apply merge-with concat)))
 
 (count-paths graph #{} "start")
