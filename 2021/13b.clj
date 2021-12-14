@@ -17,11 +17,23 @@
 (def folds
   (->> (second text)
        string/split-lines
-       first
-       fold-for-line))
+       reverse
+       (map fold-for-line)
+       (apply comp)))
 
-(->> (first text)
-     string/split-lines
-     (map (comp folds point-for-line))
-     set
-     count)
+(def folded-points
+  (->> (first text)
+       string/split-lines
+       (map (comp folds point-for-line))
+       set))
+
+(def dimensions
+  (reduce (partial mapv max) folded-points))
+
+(def lines
+  (for [r (range (inc (second dimensions)))]
+    (string/join
+     (for [c (range (inc (first dimensions)))]
+       (if (folded-points [c r]) \# \space)))))
+
+(println (string/join \newline lines))
