@@ -1,25 +1,25 @@
 (require '[clojure.string :as string])
 
-(defn point-for-line [line] (mapv #(Integer. %) (string/split line #",")))
+(defn point-for-line [line]
+  (mapv #(Integer. %) (string/split line #",")))
 
-(defn transform-for-line [line]
+(defn fold-for-line [line]
   (let [parts (string/split line #" |=")
         axis (case (parts 2) "x" 0 "y" 1)
-        value (Integer. (parts 3))]
+        vertex (Integer. (parts 3))
+        doubled-vertex (+ vertex vertex)]
     (fn [point]
-      (if (< (point axis) value)
-        point
-        (update point axis #(- (+ value value) %))))))
+      (update point axis #(if (< % vertex) % (- doubled-vertex %))))))
 
-(def paragraphs (string/split (slurp "13.txt") #"\n\n"))
+(def text (string/split (slurp "13.txt") #"\n\n"))
 
-(def transforms (->> (second paragraphs)
-                     string/split-lines
-                     (map transform-for-line)))
+(def folds (->> (second text)
+                string/split-lines
+                first
+                fold-for-line))
 
-(->> (first paragraphs)
+(->> (first text)
      string/split-lines
-     (mapv point-for-line)
-     (pmap (first transforms))
+     (map (comp folds point-for-line))
      set
      count)
