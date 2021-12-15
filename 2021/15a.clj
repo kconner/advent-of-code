@@ -8,9 +8,7 @@
 ; A row's scores are a lazy sequence of the scores for each cell computed by the score of the prior cell and the score of the same cell in the prior row. 
 
 (defn row-scores [above row]
-  (rest (reductions cell-score
-                    ##Inf
-                    (map list above row))))
+  (rest (reductions cell-score ##Inf (map list above row))))
 
 ; The total path score is the last score in the last row, computed from all prior rows, starting with a value above the left corner that neutralizes its contribution. 
 
