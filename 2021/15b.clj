@@ -20,14 +20,6 @@
                 (conj (repeat ##Inf) (- (ffirst rows)))
                 rows)))
 
-; The answer is the path score for the lazy sequence of sequences of integers
-; parsed from characters of lines of text. 
-
-(->> (slurp "15.txt")
-     string/split-lines
-     (map (partial map #(Integer. (str %))))
-     path-score)
-
 ; An incremented cell value is the incremented remainder having divided by 9.
 
 (defn increment-cell [cell]
