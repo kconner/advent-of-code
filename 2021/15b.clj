@@ -46,10 +46,10 @@
 
 (defn expand-rows [rows]
   (->> rows
-     (iterate (partial map (partial map increment-cell)))
-     (take 5)
-     (apply concat)
-     (map expand-row)))
+       (iterate (partial map (partial map increment-cell)))
+       (take 5)
+       (apply concat)
+       (map expand-row)))
 
 ; The answer is the path score for the lazy expanded sequence of sequences
 ; of integers parsed from characters of lines of text. 
