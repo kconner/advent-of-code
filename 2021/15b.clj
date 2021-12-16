@@ -24,7 +24,7 @@
 ; The path score is the accumulated score when the last cell is found in the
 ; set of cells for the accumulated score. Until that happens, the map of sets
 ; of cells by score is evolved by removing the set of cells for the accumulated
-; score and adding cells by score for each their cells' adjacent unscored cells.
+; score and adding each of their adjacent unscored cells by its score.
 ; This process is effectively a weighted flood fill.
 
 (defn path-score [rows]
