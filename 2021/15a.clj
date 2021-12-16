@@ -45,31 +45,6 @@
                                      neighbors)
                              (inc score))))))))
 
-; An incremented cell value is the incremented remainder having divided by 9.
-
-(defn increment-cell [cell]
-  (inc (mod cell 9)))
-
-; An expanded row is the vector of the concatenated first five incrementing
-; copies of the row.
-
-(defn expand-row [row]
-  (->> row
-       (iterate (partial map increment-cell))
-       (take 5)
-       (apply concat)
-       vec))
-
-; An expanded list of rows is the vector of the expansion of each row of the
-; concatenated first five incrementing copies of all rows.
-
-(defn expand-rows [rows]
-  (->> rows
-       (iterate (partial map (partial map increment-cell)))
-       (take 5)
-       (apply concat)
-       (mapv expand-row)))
-
 ; The answer is the path score for the expanded vector of vectors of integers
 ; parsed from characters of lines of text. 
 
