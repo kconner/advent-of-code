@@ -45,8 +45,8 @@
                                      neighbors)
                              (inc score))))))))
 
-; The answer is the path score for the expanded vector of vectors of integers
-; parsed from characters of lines of text. 
+; The answer is the path score for the vector of vectors of integers parsed
+; from characters of lines of text. 
 
 (time (->> (slurp "15.txt")
            string/split-lines
