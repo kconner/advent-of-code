@@ -76,4 +76,5 @@
 (time (->> (slurp "15.txt")
            string/split-lines
            (mapv (partial mapv #(Integer. (str %))))
+           expand-rows
            path-score))
