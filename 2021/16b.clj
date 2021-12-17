@@ -67,18 +67,15 @@
   (fn [& args]
     (if (apply operator args) 1 0)))
 
+(def operator-for-type
+  {0 +, 1 *, 2 min, 3 max, 5 (as-number >), 6 (as-number <), 7 (as-number =)})
+
 (defn read-packet [state]
   (let [[state version] (read-number state 3)
         [state type] (read-number state 3)
-        [state packet] (case type
-                         0 (read-operator-packet state +)
-                         1 (read-operator-packet state *)
-                         2 (read-operator-packet state min)
-                         3 (read-operator-packet state max)
-                         4 (read-literal-packet state)
-                         5 (read-operator-packet state (as-number >))
-                         6 (read-operator-packet state (as-number <))
-                         7 (read-operator-packet state (as-number =)))]
+        [state packet] (if-let [operator (operator-for-type type)]
+                         (read-operator-packet state operator)
+                         (read-literal-packet state))]
     [state (assoc packet :version version)]))
 
 (defn with-state [reader bits & args]
