@@ -79,7 +79,6 @@
                          5 (read-operator-packet state (as-number >))
                          6 (read-operator-packet state (as-number <))
                          7 (read-operator-packet state (as-number =)))]
-
     [state (assoc packet :version version)]))
 
 (defn with-state [reader bits & args]
