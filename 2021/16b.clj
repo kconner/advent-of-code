@@ -56,30 +56,43 @@
        (let [[state packet] (read-packet state)]
          (read-packets-by-length state (conj packets packet) end)))))
 
-(defn read-operator-packet [state]
+(defn read-operator-packet [state operator]
   (let [[state use-count] (read-flag state)
         [state operands] (if use-count
                            (read-packets-by-count state)
                            (read-packets-by-length state))]
-    [state {:operands operands}]))
+    [state {:operator operator :operands operands}]))
+
+(defn as-number [operator]
+  (fn [& args]
+    (if (apply operator args) 1 0)))
 
 (defn read-packet [state]
   (let [[state version] (read-number state 3)
         [state type] (read-number state 3)
         [state packet] (case type
+                         0 (read-operator-packet state +)
+                         1 (read-operator-packet state *)
+                         2 (read-operator-packet state min)
+                         3 (read-operator-packet state max)
                          4 (read-literal-packet state)
-                         (read-operator-packet state))]
+                         5 (read-operator-packet state (as-number >))
+                         6 (read-operator-packet state (as-number <))
+                         7 (read-operator-packet state (as-number =)))]
+
     [state (assoc packet :version version)]))
 
 (defn with-state [reader bits & args]
   (second (apply reader [0 bits] args)))
 
-(defn version-sum [packet]
+(defn evaluate [packet]
   (walk/postwalk
    (fn [item]
-     (if-let [version (:version item)]
-       (apply + version (:operands item))
-       item))
+     (if-let [value (:value item)]
+       value
+       (if-let [operator (:operator item)]
+         (apply operator (:operands item))
+         item)))
    packet))
 
-(time (version-sum (with-state read-packet (bits-for-text (slurp "16.txt")))))
+(time (evaluate (with-state read-packet (bits-for-text (slurp "16.txt")))))
