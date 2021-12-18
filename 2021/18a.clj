@@ -7,17 +7,19 @@
   ([form depth]
    (cond (number? form) nil
          (= depth 4) ()
-         :else (some identity
-                     (map-indexed (fn [index item]
-                                    (if-let [path (path-to-explode
-                                                   item (inc depth))]
-                                      (conj path index)
-                                      nil))
-                                  form)))))
+         :else (->> form
+                    (map-indexed
+                     (fn [index item]
+                       (if-let [path (path-to-explode item (inc depth))]
+                         (conj path index)
+                         nil)))
+                    (some identity)))))
 
 (defn inc-path
   ([path]
-   (inc-path (vec path) (dec (count path))))
+   (if-let [incremented (inc-path (vec path) (dec (count path)))]
+     (conj incremented 0)
+     nil))
   ([path place]
    (cond (neg? place) nil
          (zero? (path place)) (assoc path place 1)
@@ -25,7 +27,9 @@
 
 (defn dec-path
   ([path]
-   (dec-path (vec path) (dec (count path))))
+   (if-let [decremented (dec-path (vec path) (dec (count path)))]
+     (conj decremented 1)
+     nil))
   ([path place]
    (cond (neg? place) nil
          (pos? (path place)) (assoc path place 0)
@@ -40,18 +44,19 @@
   (let [[left right] (get-in form path)]
     (-> form
         (assoc-in path 0)
-        (add-on-path (conj (dec-path path) 1) left)
-        (add-on-path (conj (inc-path path) 0) right))))
+        (add-on-path (dec-path path) left)
+        (add-on-path (inc-path path) right))))
 
 (defn path-to-split [form]
   (if (number? form)
     (if (<= 10 form) () nil)
-    (some identity (map-indexed
-                    (fn [index item]
-                      (if-let [path (path-to-split item)]
-                        (conj path index)
-                        nil))
-                    form))))
+    (->> form
+         (map-indexed
+          (fn [index item]
+            (if-let [path (path-to-split item)]
+              (conj path index)
+              nil)))
+         (some identity))))
 
 (defn split [form path]
   (update-in form path
