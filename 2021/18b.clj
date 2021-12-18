@@ -85,8 +85,7 @@
 
 (defn permuted-pairs [v]
   (let [indices (range (count v))]
-    (->> (for [a indices b indices] [a b])
-         (remove (partial apply =))
+    (->> (for [a indices b indices :when (not= a b)] [a b])
          (map (partial map v)))))
 
 (time (->> (slurp "18.txt")
