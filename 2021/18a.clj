@@ -70,11 +70,7 @@
       (simplify (split form path))
       form)))
 
-(defn add
-  ([left right]
-   (simplify [left right]))
-  ([left right & more]
-   (apply add (simplify [left right]) more)))
+(defn add [left right] (simplify [left right]))
 
 (defn magnitude-step [form]
   (if (number? form) form
@@ -86,5 +82,5 @@
 (time (->> (slurp "18.txt")
            (string/split-lines)
            (map edn/read-string)
-           (apply add)
+           (reduce add)
            magnitude))
