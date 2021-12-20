@@ -17,7 +17,7 @@
   (let [na (- a) nb (- b) nc (- c)]
     [[a b c] [a nb nc] [na b nc] [na nb c]
      [b c a] [b nc na] [nb c na] [nb nc a]
-     [c a b] [c na nb] [nc a nb] [nc nb a]
+     [c a b] [c na nb] [nc a nb] [nc na b]
      [a c nb] [a nc b] [na c b] [na nc nb]
      [b a nc] [b na c] [nb a c] [nb na nc]
      [c b na] [c nb a] [nc b a] [nc nb na]]))
