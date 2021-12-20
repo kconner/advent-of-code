@@ -21,10 +21,14 @@
         padding-lines (repeat factor (repeat (count (first padded-lines)) \.))]
     (concat padding-lines padded-lines padding-lines)))
 
+(defn triples [join items]
+  (map join items (drop 1 items) (drop 2 items)))
+
 (defn enhance [table image]
-  (let [horizontal-groups (map (fn [line] (map list line (drop 1 line) (drop 2 line))) image)]
-    (map (partial map (fn [group] (if (table group) \# \.)))
-         (map (partial map list) horizontal-groups (drop 1 horizontal-groups) (drop 2 horizontal-groups)))))
+  (->> image
+       (map (partial triples list))
+       (triples (partial map list))
+       (map (partial map (fn [group] (if (table group) \# \.))))))
 
 (time (let [lines (string/split-lines (slurp "20.txt"))
             table (make-table (first lines))
