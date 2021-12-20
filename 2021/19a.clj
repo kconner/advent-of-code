@@ -5,7 +5,7 @@
   (->> line
        (re-matches #"(-?\d+),(-?\d+),(-?\d+)")
        rest
-       (map #(Integer. %))))
+       (mapv #(Integer. %))))
 
 (defn scanner-for-paragraph [paragraph]
   (->> paragraph string/split-lines rest (map beacon-for-line)))
@@ -23,12 +23,12 @@
      [c b na] [c nb a] [nc b a] [nc nb na]]))
 
 (defn scanner-rotations [scanner]
-  (apply map list (map beacon-rotations scanner)))
+  (apply map vector (map beacon-rotations scanner)))
 
 (defn oriented-matching-scanner [basis-scanner scanner-rotation]
   (some (fn [os] (when (<= 12 (count (filter basis-scanner os))) os))
-        (for [bb basis-scanner rb scanner-rotation :let [offset (map - bb rb)]]
-          (map (partial map + offset) scanner-rotation))))
+        (for [bb basis-scanner rb scanner-rotation :let [offset (mapv - bb rb)]]
+          (mapv (partial map + offset) scanner-rotation))))
 
 (defn next-match-among-all [oriented-scanners remaining-rotated-scanners]
   (first (for [[index rotated-scanner]
@@ -37,22 +37,24 @@
                :let [basis-set (set basis-scanner)]
                scanner-rotation rotated-scanner
                :let [match (oriented-matching-scanner basis-set scanner-rotation)]
-               :when match
-               :let [remainder-vector (vec remaining-rotated-scanners)]]
-           [match (concat (subvec remainder-vector (inc index))
-                          (subvec remainder-vector 0 index))])))
+               :when match]
+           [match (vec (concat (subvec remaining-rotated-scanners (inc index))
+                               (subvec remaining-rotated-scanners 0 index)))])))
 
 (defn mutually-oriented-scanners [scanners]
   (loop [oriented-scanners [(first scanners)]
-         remaining-rotated-scanners (map scanner-rotations (rest scanners))]
-    (if (empty? remaining-rotated-scanners) oriented-scanners
+         remaining-rotated-scanners (mapv scanner-rotations (rest scanners))]
+    (if (= 3 (count oriented-scanners)) oriented-scanners
+    ;; (if (empty? remaining-rotated-scanners) oriented-scanners
         (let [[match remainder]
-              (next-match-among-all oriented-scanners remaining-rotated-scanners)]
+              (time (next-match-among-all oriented-scanners remaining-rotated-scanners))]
+          ;; (if-not match "fail" match)))))
           (recur (conj oriented-scanners match) remainder)))))
 
 (time (->> (slurp "19.txt")
            scanners-for-text
            mutually-oriented-scanners
-           (map set)
-           (apply set/union)
-           count))
+          ;;  (map set)
+          ;;  (apply set/union)
+          ;;  count))
+           ))
