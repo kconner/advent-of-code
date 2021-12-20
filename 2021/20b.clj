@@ -1,19 +1,18 @@
 (require '[clojure.string :as string])
 
-(defn table-entry [value]
-  (->> (range 9)
-       (reduce (fn [[value characters] _]
-                 [(bit-shift-right value 1)
-                  (conj characters (if (odd? value) \# \.))])
-               [value, ()])
-       second
-       (partition 3)))
+(defn group-if-lit [index character]
+  (when (= character \#)
+    (->> (range 9)
+         (reduce (fn [[value characters] _]
+                   [(bit-shift-right value 1)
+                    (conj characters (if (odd? value) \# \.))])
+                 [index ()])
+         second
+         (partition 3))))
 
 (defn make-table [input]
-  (->> input
-       (keep-indexed (fn [index character]
-                       (when (= character \#) (table-entry index))))
-       set))
+  (let [lit-groups (set (keep-indexed group-if-lit input))]
+    #(if (lit-groups %) \# \.)))
 
 (defn padded-image [factor image]
   (let [padding (repeat factor \.)
@@ -28,7 +27,7 @@
   (->> image
        (map (partial triples list))
        (triples (partial map list))
-       (map (partial map (fn [group] (if (table group) \# \.))))))
+       (map (partial map table))))
 
 (time (let [lines (string/split-lines (slurp "20.txt"))
             table (make-table (first lines))
