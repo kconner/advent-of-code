@@ -44,17 +44,16 @@
 (defn mutually-oriented-scanners [scanners]
   (loop [oriented-scanners [(first scanners)]
          remaining-rotated-scanners (mapv scanner-rotations (rest scanners))]
-    (if (= 3 (count oriented-scanners)) oriented-scanners
-    ;; (if (empty? remaining-rotated-scanners) oriented-scanners
+    ;; (if (= 2 (count oriented-scanners)) oriented-scanners
+    (if (empty? remaining-rotated-scanners) oriented-scanners
         (let [[match remainder]
               (time (next-match-among-all oriented-scanners remaining-rotated-scanners))]
-          ;; (if-not match "fail" match)))))
-          (recur (conj oriented-scanners match) remainder)))))
+          (if-not match [(count oriented-scanners) (count remaining-rotated-scanners) "fail"]
+                  (recur (conj oriented-scanners match) remainder))))))
 
 (time (->> (slurp "19.txt")
            scanners-for-text
            mutually-oriented-scanners
-          ;;  (map set)
-          ;;  (apply set/union)
-          ;;  count))
-           ))
+           (map set)
+           (apply set/union)
+           count))
