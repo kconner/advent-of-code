@@ -6,20 +6,18 @@
                  [(bit-shift-right value 1)
                   (conj characters (if (odd? value) \# \.))])
                [value, ()])
-       (second)
+       second
        (partition 3)))
 
-(defn table [input]
+(defn make-table [input]
   (->> input
-       (keep-indexed
-        (fn [index character]
-          (when (= character \#)
-            (table-entry index))))
+       (keep-indexed (fn [index character]
+                       (when (= character \#) (table-entry index))))
        set))
 
 (defn padded-image [factor image]
   (let [padding (repeat factor \.)
-        padded-lines (map #(concat padding % padding) image)
+        padded-lines (map (fn [line] (concat padding line padding)) image)
         padding-lines (repeat factor (repeat (count (first padded-lines)) \.))]
     (concat padding-lines padded-lines padding-lines)))
 
@@ -29,11 +27,13 @@
          (map (partial map list) horizontal-groups (drop 1 horizontal-groups) (drop 2 horizontal-groups)))))
 
 (time (let [lines (string/split-lines (slurp "20.txt"))
-            a-table (table (first lines))]
+            table (make-table (first lines))
+            steps 2]
         (->> (drop 2 lines)
-             (padded-image 4)
-             (enhance a-table)
-             (enhance a-table)
+             (padded-image (* 2 steps))
+             (iterate (partial enhance table))
+             (drop steps)
+             first
              (apply concat)
              (filter (partial = \#))
              count)))
