@@ -30,13 +30,20 @@
         (for [bb basis-scanner rb scanner-rotation :let [offset (mapv - bb rb)]]
           (mapv (partial map + offset) scanner-rotation))))
 
+(defn oriented-matching-scanner-2 [basis-scanner scanner-rotation]
+  (some (fn [[offset count]]
+          (when (<= 12 count)
+            (mapv (partial map + offset) scanner-rotation)))
+        (frequencies (for [bb basis-scanner rb scanner-rotation]
+                       (mapv - bb rb)))))
+
 (defn next-match-among-all [oriented-scanners remaining-rotated-scanners]
   (first (for [[index rotated-scanner]
                (map-indexed vector remaining-rotated-scanners)
                basis-scanner oriented-scanners
                :let [basis-set (set basis-scanner)]
                scanner-rotation rotated-scanner
-               :let [match (oriented-matching-scanner basis-set scanner-rotation)]
+               :let [match (oriented-matching-scanner-2 basis-set scanner-rotation)]
                :when match]
            [match (vec (concat (subvec remaining-rotated-scanners (inc index))
                                (subvec remaining-rotated-scanners 0 index)))])))
