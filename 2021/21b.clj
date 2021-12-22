@@ -12,17 +12,17 @@
        (map (partial apply +))
        frequencies))
 
-(defn search [universes game whose-turn depth]
+(defn search [universes player-states player depth]
   (->> roll-sum-frequencies
        ((if (<= depth 2) pmap map)
         (fn [[roll-sum frequency]]
           (let [universes (* universes frequency)
-                [score _ :as state] (take-turn (game whose-turn) roll-sum)]
+                [score _ :as state] (take-turn (player-states player) roll-sum)]
             (if (<= 21 score)
-              (assoc [0 0] whose-turn universes)
+              (assoc [0 0] player universes)
               (search universes
-                      (assoc game whose-turn state)
-                      (- 1 whose-turn)
+                      (assoc player-states player state)
+                      (- 1 player)
                       (inc depth))))))
        (reduce (fn [[sv0 sv1] [v0 v1]] [(+ sv0 v0) (+ sv1 v1)]))))
 
