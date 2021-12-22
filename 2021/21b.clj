@@ -17,9 +17,9 @@
        ((if (<= depth 2) pmap map)
         (fn [[roll-sum frequency]]
           (let [universes (* universes frequency)
-                [score place :as state] (take-turn (game whose-turn) roll-sum)]
+                [score _ :as state] (take-turn (game whose-turn) roll-sum)]
             (if (<= 21 score)
-              (if (zero? whose-turn) [universes 0] [0 universes])
+              (assoc [0 0] whose-turn universes)
               (search universes
                       (assoc game whose-turn state)
                       (- 1 whose-turn)
