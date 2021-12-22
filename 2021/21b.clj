@@ -18,7 +18,7 @@
 
 (defn search [game depth]
   (->> roll-sum-frequencies
-       ((if (<= depth 1) pmap map)
+       ((if (<= depth 2) pmap map)
         (fn [[roll-sum frequency]]
           (let [[universes _ [[score-0 _] [score-1 _]] :as game]
                 (take-turn game roll-sum frequency)]
