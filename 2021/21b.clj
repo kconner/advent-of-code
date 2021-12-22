@@ -7,8 +7,7 @@
     [(+ score (place-scores place)) place]))
 
 (def roll-sum-frequencies
-  (->> (let [rolls (range 1 4)]
-         (for [a rolls b rolls c rolls] [a b c]))
+  (->> (let [rolls (range 1 4)] (for [a rolls b rolls c rolls] [a b c]))
        (map (partial apply +))
        frequencies))
 
@@ -26,12 +25,7 @@
                       (inc depth))))))
        (reduce (partial mapv +))))
 
-(time (apply
-       max
-       (search
-        1
-        (mapv (fn [line]
-                [0 (Integer. (last (string/split line #" ")))])
-              (string/split-lines (slurp "21.txt")))
-        0
-        0)))
+(time (let [player-states
+            (mapv (fn [line] [0 (Integer. (last (string/split line #" ")))])
+                  (string/split-lines (slurp "21.txt")))]
+        (apply max (search 1 player-states 0 0))))
