@@ -24,7 +24,7 @@
                       (assoc player-states player state)
                       (- 1 player)
                       (inc depth))))))
-       (reduce (fn [[sv0 sv1] [v0 v1]] [(+ sv0 v0) (+ sv1 v1)]))))
+       (reduce (partial mapv +))))
 
 (time (apply
        max
