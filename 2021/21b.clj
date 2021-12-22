@@ -7,25 +7,22 @@
        (map (partial apply +))
        frequencies))
 
-(defn search [universes player-states player depth]
+(defn search [universes places scores player depth]
   (->> roll-sum-frequencies
        ((if (<= depth 2) pmap map)
         (fn [[roll-sum frequency]]
           (let [universes (* universes frequency)
-                {score :score place :place} (player-states player)
-                place (mod (+ place roll-sum) 10)
-                score (+ score (place-scores place))]
+                place (mod (+ (places player) roll-sum) 10)
+                score (+ (scores player) (place-scores place))]
             (if (<= 21 score)
               {player universes}
               (search universes
-                      (assoc player-states player {:score score :place place})
+                      (assoc places player place)
+                      (assoc scores player score)
                       (- 1 player)
                       (inc depth))))))
        (reduce (partial merge-with +))))
 
-(time (let [player-states
-            (mapv (fn [line]
-                    {:score 0
-                     :place (Integer. (last (string/split line #" ")))})
-                  (string/split-lines (slurp "21.txt")))]
-        (apply max (vals (search 1 player-states 0 0)))))
+(time (let [places (mapv (fn [line] (Integer. (last (string/split line #" "))))
+                         (string/split-lines (slurp "21.txt")))]
+        (apply max (vals (search 1 places [0 0] 0 0)))))
