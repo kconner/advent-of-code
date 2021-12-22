@@ -16,14 +16,14 @@
                 place (mod (+ place roll-sum) 10)
                 score (+ score (place-scores place))]
             (if (<= 21 score)
-              (assoc [0 0] player universes)
+              {player universes}
               (search universes
                       (assoc player-states player [score place])
                       (- 1 player)
                       (inc depth))))))
-       (reduce (partial mapv +))))
+       (reduce (partial merge-with +))))
 
 (time (let [player-states
             (mapv (fn [line] [0 (Integer. (last (string/split line #" ")))])
                   (string/split-lines (slurp "21.txt")))]
-        (apply max (search 1 player-states 0 0))))
+        (apply max (vals (search 1 player-states 0 0)))))
