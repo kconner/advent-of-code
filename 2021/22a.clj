@@ -6,7 +6,7 @@
 (defn step-from-line [line]
   (let [[_ color & bounds] (re-matches step-regex line)]
     (concat [(when (= color "on") true)]
-            (mapv #(Integer. %) bounds))))
+            (map #(Integer. %) bounds))))
 
 (defn filter-limits [lower upper steps]
   (filter (fn [[_ minx maxx miny maxy minz maxz]]
