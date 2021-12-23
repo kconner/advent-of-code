@@ -8,6 +8,12 @@
     (concat [(when (= color "on") true)]
             (mapv #(Integer. %) bounds))))
 
+(defn filter-limits [lower upper steps]
+  (filter (fn [[_ minx maxx miny maxy minz maxz]]
+            (and (<= lower maxx) (<= minx upper)
+                 (<= lower maxy) (<= miny upper)
+                 (<= lower maxz) (<= minz upper))) steps))
+
 (defn filter-x [steps x]
   (filter (fn [[_ min max]] (<= min x max)) steps))
 
@@ -18,11 +24,14 @@
   (filter (fn [[_ _ _ _ _ min max]] (<= min z max)) steps))
 
 (time
- (let [limits (range -50 51)
+ (let [upper 50
+       lower (- upper)
+       ordinates (range lower (inc upper))
        steps (->> (slurp "22.txt")
                   string/split-lines
                   (map step-from-line)
-                  reverse)]
+                  reverse
+                  (filter-limits lower upper))]
    (count
     (apply concat
            (pmap (fn [x]
@@ -33,6 +42,6 @@
                                       (keep (fn [z]
                                               (let [steps (filter-z steps z)]
                                                 (ffirst steps)))
-                                            limits)))
-                                  limits))))
-                 limits)))))
+                                            ordinates)))
+                                  ordinates))))
+                 ordinates)))))
