@@ -14,11 +14,10 @@
 (defn cut [node edge]
   (let [extended (concat [{:at ##-Inf}] node [{:at ##Inf}])]
     (->> [extended (drop 1 extended)]
-         (apply mapcat
-                (fn [{from :at :as interval} {to :at}]
-                  (if (< from edge to)
-                    [interval (assoc interval :at edge)]
-                    [interval])))
+         (apply mapcat (fn [{from :at :as interval} {to :at}]
+                         (if (< from edge to)
+                           [interval (assoc interval :at edge)]
+                           [interval])))
          (drop 1)
          vec)))
 
@@ -39,11 +38,11 @@
        (cut (cut node from) to)))
 
 (defn insert-x [node {from :from to :to step :step}]
-  (map (fn [{at :at child :child :as interval}]
-         (if (and (<= from at) (< at to))
-           (assoc interval :child (insert-y (or child []) step))
-           interval))
-       (cut (cut node from) to)))
+  (pmap (fn [{at :at child :child :as interval}]
+          (if (and (<= from at) (< at to))
+            (assoc interval :child (insert-y (or child []) step))
+            interval))
+        (cut (cut node from) to)))
 
 (defn on-length [node]
   (reduce + (map (fn [{from :at value :value} {to :at}]
