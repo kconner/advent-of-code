@@ -4,9 +4,56 @@
   #"(on|off) x=(-?\d+)..(-?\d+),y=(-?\d+)..(-?\d+),z=(-?\d+)..(-?\d+)")
 
 (defn step-from-line [line]
-  (let [[_ color & bounds] (re-matches step-regex line)]
-    {:on (= color "on")
-     :tree {:box (mapv vec (partition 2 (map #(Integer. %) bounds)))}}))
+  (let [[_ value minx maxx miny maxy minz maxz] (re-matches step-regex line)]
+    {:from (Integer. minx) :to (inc (Integer. maxx))
+     :child {:from (Integer. miny) :to (inc (Integer. maxy))
+             :child {:from (Integer. minz) :to (inc (Integer. maxz))
+                     :value (= "on" value)}}}))
+
+(def -step (step-from-line "on x=-42..2,y=-37..12,z=-34..14"))
+
+(def -tree
+  [{:at -42 :child
+    [{:at -37 :child
+      [{:at -34 :value true}
+       {:at 15}]}
+     {:at 13}]}
+   {:at 3}])
+
+(def -tree2
+  [{:at -42 :child
+    [{:at -37 :child
+      [{:at -34 :value true}
+       {:at 0}
+       {:at 6 :value false}
+       {:at 10 :value true}
+       {:at 15}]}
+     {:at 13}]}
+   {:at 3}])
+
+(defn on-length [node]
+  (reduce + (map (fn [{from :at value :value} {to :at}]
+                   (if value (- to from) 0))
+                 node (drop 1 node))))
+
+(on-length (get-in -tree [0 :child 0 :child]))
+(on-length (get-in -tree2 [0 :child 0 :child]))
+
+(defn on-area [node]
+  (reduce + (map (fn [{from :at child :child} {to :at}]
+                   (if child (* (- to from) (on-length child)) 0))
+                 node (drop 1 node))))
+
+(on-area (get-in -tree [0 :child]))
+(on-area (get-in -tree2 [0 :child]))
+
+(defn on-volume [node]
+  (reduce + (map (fn [{from :at child :child} {to :at}]
+                   (if child (* (- to from) (on-area child)) 0))
+                 node (drop 1 node))))
+
+(on-volume -tree)
+(on-volume -tree2)
 
 (->> (slurp "22.txt")
      string/split-lines
