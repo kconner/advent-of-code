@@ -6,8 +6,8 @@
 (defn step-from-line [line]
   (let [[_ value minx maxx miny maxy minz maxz] (re-matches step-regex line)]
     {:from (Integer. minx) :to (inc (Integer. maxx))
-     :child {:from (Integer. miny) :to (inc (Integer. maxy))
-             :child {:from (Integer. minz) :to (inc (Integer. maxz))
+     :step {:from (Integer. miny) :to (inc (Integer. maxy))
+             :step {:from (Integer. minz) :to (inc (Integer. maxz))
                      :value (= "on" value)}}}))
 
 (def -step (step-from-line "on x=-42..2,y=-37..12,z=-34..14"))
@@ -30,6 +30,55 @@
        {:at 15}]}
      {:at 13}]}
    {:at 3}])
+
+; could binary search instead.
+(defn cut [node edge]
+(let [extended (concat [{:at ##-Inf}] node [{:at ##Inf}])]
+  (vec
+    (drop 1
+      (mapcat (fn [{from :at :as interval} {to :at}]
+            (if (< from edge to)
+              [interval (assoc interval :at edge)]
+              [interval]))
+          extended (drop 1 extended))))))
+
+(cut (get-in -tree2 [0 :child 0 :child]) 0)
+(cut (get-in -tree2 [0 :child 0 :child]) 1)
+(cut (get-in -tree2 [0 :child 0 :child]) -50)
+(cut (get-in -tree2 [0 :child 0 :child]) 50)
+
+(defn insert-z [node {from :from to :to new-value :value}]
+  (map (fn [{at :at value :value :as interval}]
+         (if (and (nil? value) (<= from at) (< at to))
+           (assoc interval :value new-value)
+           interval))
+       (cut (cut node from) to)))
+
+(insert-z (get-in -tree2 [0 :child 0 :child]) {:from -50 :to 50 :value false})
+(insert-z [] {:from -50 :to 50 :value false})
+
+(defn insert-y [node {from :from to :to step :step}]
+  (map (fn [{at :at child :child :as interval}]
+         (if (and (<= from at) (< at to))
+           (assoc interval :child (insert-z (or child []) step))
+           interval))
+       (cut (cut node from) to)))
+
+(defn insert-x [node {from :from to :to step :step}]
+  (map (fn [{at :at child :child :as interval}]
+         (if (and (<= from at) (< at to))
+           (assoc interval :child (insert-y (or child []) step))
+           interval))
+       (cut (cut node from) to)))
+
+(insert-y (get-in -tree2 [0 :child]) {:from -50 :to 50 :step {:from 0 :to 9 :value false}})
+(insert-y [] {:from -50 :to 50 :step {:from -10 :to 10 :value false}})
+
+-tree
+-tree2
+(insert-x -tree -step)
+(insert-x -tree2 -step)
+(insert-x [] -step)
 
 (defn on-length [node]
   (reduce + (map (fn [{from :at value :value} {to :at}]
