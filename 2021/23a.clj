@@ -1,114 +1,161 @@
 (require '[clojure.string :as string])
 (require '[clojure.set :as set])
 
-;#############
-;#01.2.3.4.56#
-;###a#b#c#d###
-;  #a#b#c#d#
-;  #########
+(defn places-are-empty [path position]
+  (not-any? position path))
+
+(places-are-empty [:a0 :a1 :n0] {:n1 :b :b1 2})
+
+;; the owner cannot leave the back.
+(defn from-room-back [result path back owner]
+  (fn [position]
+    (when (and (not= owner (position back))
+               (places-are-empty path position))
+      result)))
+
+;; the owner cannot leave the front if the back is the owner too.
+(defn from-room-front [result path front back owner]
+  (fn [position]
+    (when (and (or (not= owner (position front))
+                   (not= owner (position back)))
+               (places-are-empty path position))
+      result)))
+
+;; only the owner can enter.
+;; back must already be the owner.
+(defn to-room-front [result path back hall owner]
+  (fn [position]
+    (when (and (= owner (position hall))
+               (= owner (position back))
+               (places-are-empty path position))
+      result)))
+
+;; only the owner can enter.
+(defn to-room-back [result path hall owner]
+  (fn [position]
+    (when (and (= owner (position hall))
+               (places-are-empty path position))
+      result)))
+
+(defn make-edges [owner back front path hall steps-from-front]
+  [{back [(from-room-back {:from back :to hall :steps (inc steps-from-front)}
+                          (conj path front hall)
+                          back owner)]}
+   {front [(from-room-front {:from front :to hall :steps steps-from-front}
+                            (conj path hall)
+                            front back owner)]}
+   {hall [(to-room-front {:from hall :to front :steps steps-from-front}
+                         (conj path front)
+                         back hall owner)
+          (to-room-back {:from hall :to back :steps (inc steps-from-front)}
+                        (conj path front back)
+                        hall owner)]}])
+
+;; #############
+;; #01.2.3.4.56#
+;; ###a#b#c#d###
+;;   #a#b#c#d#
+;;   #########
 
 (defn make-graph []
-  {:n0 {:edges {:n1 1}}
-   :n1 {:edges {:n0 1 :a0 2 :n2 2}}
-   :a0 {:edges {:n1 2 :n2 2 :a1 1} :wants :a :after :a1}
-   :a1 {:edges {:a0 1}             :wants :a}
-   :n2 {:edges {:n1 2 :a0 2 :b0 2 :n3 2}}
-   :b0 {:edges {:n2 2 :n3 2 :b1 1} :wants :b :after :b1}
-   :b1 {:edges {:b0 1}             :wants :b}
-   :n3 {:edges {:n2 2 :b0 2 :c0 2 :n4 2}}
-   :c0 {:edges {:n3 2 :n4 2 :c1 1} :wants :c :after :c1}
-   :c1 {:edges {:c0 1}             :wants :c}
-   :n4 {:edges {:n3 2 :c0 2 :d0 2 :n5 2}}
-   :d0 {:edges {:n4 2 :n5 2 :d1 1} :wants :d :after :d1}
-   :d1 {:edges {:d0 1}             :wants :d}
-   :n5 {:edges {:n4 2 :d0 2 :n6 1}}
-   :n6 {:edges {:n5 1}}})
+  (->> [(make-edges :a :a1 :a0 [:n1] :n0 3)
+        (make-edges :a :a1 :a0 [] :n1 2)
+        (make-edges :a :a1 :a0 [] :n2 2)
+        (make-edges :a :a1 :a0 [:n2] :n3 4)
+        (make-edges :a :a1 :a0 [:n2 :n3] :n4 6)
+        (make-edges :a :a1 :a0 [:n2 :n3 :n4] :n5 8)
+        (make-edges :a :a1 :a0 [:n2 :n3 :n4 :n5] :n6 9)
+        (make-edges :b :b1 :b0 [:n2 :n1] :n0 5)
+        (make-edges :b :b1 :b0 [:n2] :n1 4)
+        (make-edges :b :b1 :b0 [] :n2 2)
+        (make-edges :b :b1 :b0 [] :n3 2)
+        (make-edges :b :b1 :b0 [:n3] :n4 4)
+        (make-edges :b :b1 :b0 [:n3 :n4] :n5 6)
+        (make-edges :b :b1 :b0 [:n3 :n4 :n5] :n6 7)
+        (make-edges :c :c1 :c0 [:n3 :n2 :n1] :n0 7)
+        (make-edges :c :c1 :c0 [:n3 :n2] :n1 6)
+        (make-edges :c :c1 :c0 [:n3] :n2 4)
+        (make-edges :c :c1 :c0 [] :n3 2)
+        (make-edges :c :c1 :c0 [] :n4 2)
+        (make-edges :c :c1 :c0 [:n4] :n5 4)
+        (make-edges :c :c1 :c0 [:n4 :n5] :n6 5)
+        (make-edges :d :d1 :d0 [:n4 :n3 :n2 :n1] :n0 9)
+        (make-edges :d :d1 :d0 [:n4 :n3 :n2] :n1 8)
+        (make-edges :d :d1 :d0 [:n4 :n3] :n2 6)
+        (make-edges :d :d1 :d0 [:n4] :n3 4)
+        (make-edges :d :d1 :d0 [] :n4 2)
+        (make-edges :d :d1 :d0 [] :n5 2)
+        (make-edges :d :d1 :d0 [:n5] :n6 3)]
+       (apply concat)
+       (apply merge-with concat)))
 
 (defn initial-position [a0 a1 b0 b1 c0 c1 d0 d1]
   (zipmap [:a0 :a1 :b0 :b1 :c0 :c1 :d0 :d1]
           [a0 a1 b0 b1 c0 c1 d0 d1]))
 
-(defn is-solved-at [graph position at]
-  (let [{wanted :wants after :after} (graph at)]
-    (and (= (position at) wanted)
-         (or (not after)
-             (= (position after)
-                ((graph after) :wants))))))
-
-(defn is-solved [graph position]
-  (every? (partial is-solved-at graph position)
-          [:a1 :b1 :c1 :d1 :a0 :b0 :c0 :d0]))
-
 (def -graph (make-graph))
 (def -position (initial-position :b :a :c :d :b :c :d :a))
 
-(is-solved-at -graph {:a0 :a :a1 :a :b0 :b :b1 :b :c0 :c :c1 :c :d0 :d :d1 :d} :d0)
-
 (def step-costs {:a 1 :b 10 :c 100 :d 1000})
 
-(defn open-edges [graph position from]
-  (let [edges ((graph from) :edges)]
-    (remove (fn [[key _]] (key position)) edges)))
+(defn edges-from [graph position from]
+  (let [step-cost (step-costs (position from))]
+    (map (fn [edge] (assoc edge :cost (* step-cost (:steps edge))))
+         (keep (fn [f] (f position)) (graph from)))))
 
--position
-(open-edges -graph -position :a0)
+(edges-from -graph -position :a0)
+(edges-from -graph -position :b0)
+
+(defn edges [graph position]
+  (mapcat (partial edges-from graph position) (keys position)))
+
+(edges -graph -position)
 
 (defn position-after-moving [position from to]
   (assoc (dissoc position from) to (position from)))
 
-(position-after-moving -position :a0 :n1)
+(defn next-states [graph base-cost position]
+  (map (fn [{from :from to :to cost :cost}]
+         [(+ base-cost cost)
+          (position-after-moving position from to)])
+       (edges graph position)))
 
-(defn next-states-from [graph position from]
-  (let [edges (open-edges graph position from)]
-    (map (fn [[to steps]]
-           [steps (position-after-moving position from to)])
-         edges)))
+(def solution-position
+  {:a0 :a :a1 :a :b0 :b :b1 :b :c0 :c :c1 :c :d0 :d :d1 :d})
 
-(next-states-from -graph -position :a0)
+(next-states -graph 11111 -position)
+(next-states -graph 12345 solution-position)
 
-(defn next-states-for-position [graph position]
-  (mapcat (fn [[from who]]
-            (if (is-solved-at graph position from) []
-                (let [step-cost (step-costs who)]
-                  (map (fn [[steps position]]
-                         [(* steps step-cost) position])
-                       (next-states-from graph position from)))))
-          position))
+(def -next (next-states -graph 11111 -position))
 
-(next-states-for-position -graph -position)
+(apply merge-with concat
+       (sorted-map)
+       (map (fn [[cost position]] {cost [position]}) -next))
 
-(defn next-states-for-positions [graph visited-positions base-cost positions]
-  (keep (fn [[cost position]]
-          (when (not (visited-positions position))
-            [(+ base-cost cost) position]))
-        (mapcat (partial next-states-for-position graph) positions)))
+(defn next-states-for-positions [graph base-cost positions]
+  (mapcat (partial next-states graph base-cost) positions))
 
-(def -visited-positions
-  #{{:a0 :b, :a1 :a, :b0 :c, :b1 :d, :c0 :b, :c1 :c, :d1 :a, :n4 :d}})
-(next-states-for-positions -graph -visited-positions 10 [-position])
+(next-states-for-positions -graph 10 [-position -position])
 
-(defn search [graph position depth]
-  (loop [visited-positions #{position}
-         positions-by-cost (sorted-map 0 (list position))
+(defn search [graph initial-position depth]
+  (loop [visited-positions #{initial-position}
+         positions-by-cost (sorted-map 0 (list initial-position))
          depth depth]
     (let [[cost positions] (first positions-by-cost)
-          other-positions-by-cost (dissoc positions-by-cost cost)]
+          other-positions-by-cost (dissoc positions-by-cost cost)
+          next (remove (fn [[_ position]] (visited-positions position))
+                       (apply concat (map (partial next-states graph cost)
+                                          positions)))]
       (println [cost (count positions)])
-      ;; (println (for [position positions at [:a1 :b1 :c1 :d1 :a0 :b0 :c0 :d0]] (is-solved-at graph position at)))
-      ;; (if (zero? depth) [cost
-      ;;                    (count visited-positions)
-      ;;                    (count positions-by-cost)
-      ;;                    (for [position positions at [:a1 :b1 :c1 :d1 :a0 :b0 :c0 :d0]] (is-solved-at graph position at))]
-      (if (some (partial is-solved graph) positions) cost
-          (let [new-states
-                (next-states-for-positions graph visited-positions cost positions)]
-            (recur (set/union visited-positions (set (map second new-states)))
-                   (apply merge-with concat
-                          other-positions-by-cost
-                          (map (fn [[cost position]] {cost [position]}) new-states))
-                   (dec depth)))))))
+      (if (zero? depth) [cost (map (fn [pos] [pos (edges graph pos)]) positions)]
+          (if (some (partial = solution-position) positions) cost
+              (recur (set/union visited-positions (set (map second next)))
+                     (apply merge-with concat
+                            other-positions-by-cost
+                            (map (fn [[cost position]] {cost [position]}) next))
+                     (dec depth)))))))
 
-(time (search -graph -position 1000))
+(time (search -graph -position 3000))
 
 ;; (let [positions-by-cost (sorted-map 3 [:ok] 4 :nah)
 ;;       [cost positions] (first positions-by-cost)
