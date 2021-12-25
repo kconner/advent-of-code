@@ -28,8 +28,21 @@
   (zipmap [:a0 :a1 :b0 :b1 :c0 :c1 :d0 :d1]
           [a0 a1 b0 b1 c0 c1 d0 d1]))
 
+(defn is-solved-at [graph position at]
+  (let [{wanted :wants after :after} (graph at)]
+    (and (= (position at) wanted)
+         (or (not after)
+             (= (position after)
+                ((graph after) :wants))))))
+
+(defn is-solved [graph position]
+  (every? (partial is-solved-at graph position)
+          [:a1 :b1 :c1 :d1 :a0 :b0 :c0 :d0]))
+
 (def -graph (make-graph))
 (def -position (initial-position :b :a :c :d :b :c :d :a))
+
+(is-solved-at -graph {:a0 :a :a1 :a :b0 :b :b1 :b :c0 :c :c1 :c :d0 :d :d1 :d} :d0)
 
 (def step-costs {:a 1 :b 10 :c 100 :d 1000})
 
@@ -55,10 +68,11 @@
 
 (defn next-states-for-position [graph position]
   (mapcat (fn [[from who]]
-            (let [step-cost (step-costs who)]
-              (map (fn [[steps position]]
-                     [(* steps step-cost) position])
-                   (next-states-from graph position from))))
+            (if (is-solved-at graph position from) []
+                (let [step-cost (step-costs who)]
+                  (map (fn [[steps position]]
+                         [(* steps step-cost) position])
+                       (next-states-from graph position from)))))
           position))
 
 (next-states-for-position -graph -position)
@@ -73,26 +87,26 @@
   #{{:a0 :b, :a1 :a, :b0 :c, :b1 :d, :c0 :b, :c1 :c, :d1 :a, :n4 :d}})
 (next-states-for-positions -graph -visited-positions 10 [-position])
 
-(defn is-solved [graph position]
-  (every? (fn [at] (= (position at) ((graph at) :wants)))
-          [:a1 :b1 :c1 :d1 :a0 :b0 :c0 :d0]))
-
 (defn search [graph position depth]
   (loop [visited-positions #{position}
          positions-by-cost (sorted-map 0 (list position))
          depth depth]
     (let [[cost positions] (first positions-by-cost)
           other-positions-by-cost (dissoc positions-by-cost cost)]
-      ;; (println cost)
-      (if (zero? depth) [cost (count visited-positions) (count positions-by-cost)]
-          (if (some (partial is-solved graph) positions) cost
-              (let [new-states
-                    (next-states-for-positions graph visited-positions cost positions)]
-                (recur (set/union visited-positions (set (map second new-states)))
-                       (apply merge-with concat
-                              other-positions-by-cost
-                              (map (fn [[cost position]] {cost [position]}) new-states))
-                       (dec depth))))))))
+      (println [cost (count positions)])
+      ;; (println (for [position positions at [:a1 :b1 :c1 :d1 :a0 :b0 :c0 :d0]] (is-solved-at graph position at)))
+      ;; (if (zero? depth) [cost
+      ;;                    (count visited-positions)
+      ;;                    (count positions-by-cost)
+      ;;                    (for [position positions at [:a1 :b1 :c1 :d1 :a0 :b0 :c0 :d0]] (is-solved-at graph position at))]
+      (if (some (partial is-solved graph) positions) cost
+          (let [new-states
+                (next-states-for-positions graph visited-positions cost positions)]
+            (recur (set/union visited-positions (set (map second new-states)))
+                   (apply merge-with concat
+                          other-positions-by-cost
+                          (map (fn [[cost position]] {cost [position]}) new-states))
+                   (dec depth)))))))
 
 (time (search -graph -position 1000))
 
