@@ -79,9 +79,8 @@
 (defn digits [depth]
   (if (zero? depth) '(())
       (let [child (digits (dec depth))]
-        (for [d (range 9 0 -1)
-              c child]
-          (conj c d)))))
+        (mapcat (fn [d] (map (fn [c] (conj c d)) child))
+                (range 9 0 -1)))))
 
 (defn initial-state [digits]
   {:w 0 :x 0 :y 0 :z 0 :digits digits :initial-digits digits})
