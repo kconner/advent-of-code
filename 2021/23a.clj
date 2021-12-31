@@ -1,10 +1,7 @@
-(require '[clojure.string :as string])
 (require '[clojure.set :as set])
 
 (defn places-are-empty [path position]
   (not-any? position path))
-
-(places-are-empty [:a0 :a1 :n0] {:n1 :b :b1 2})
 
 ;; the owner cannot leave the back.
 (defn from-room-back [result path back owner]
@@ -89,14 +86,6 @@
        (apply concat)
        (apply merge-with concat)))
 
-(defn initial-position [a0 a1 b0 b1 c0 c1 d0 d1]
-  (zipmap [:a0 :a1 :b0 :b1 :c0 :c1 :d0 :d1]
-          [a0 a1 b0 b1 c0 c1 d0 d1]))
-
-(def -graph (make-graph))
-(def -position (initial-position :b :a :c :d :b :c :d :a))
-;; (def -position (initial-position :a :c :d :c :a :d :b :b))
-
 (def step-costs {:a 1 :b 10 :c 100 :d 1000})
 
 (defn edges-from [graph position from]
@@ -104,13 +93,8 @@
     (map (fn [edge] (assoc edge :cost (* step-cost (:steps edge))))
          (keep (fn [f] (f position)) (graph from)))))
 
-(edges-from -graph -position :a0)
-(edges-from -graph -position :b0)
-
 (defn edges [graph position]
   (mapcat (partial edges-from graph position) (keys position)))
-
-(edges -graph -position)
 
 (defn position-after-moving [position from to]
   (assoc (dissoc position from) to (position from)))
@@ -121,34 +105,6 @@
           (position-after-moving position from to)])
        (edges graph position)))
 
-(def solution-position
-  {:a0 :a :a1 :a :b0 :b :b1 :b :c0 :c :c1 :c :d0 :d :d1 :d})
-
-(def -solution-position solution-position)
-
-(next-states -graph 11111 -position)
-(next-states -graph 12345 solution-position)
-
-(next-states -graph 12513 {:a1 :a
-                           :b0 :b
-                           :b1 :b
-                           :c0 :c
-                           :c1 :c
-                           :d0 :d
-                           :d1 :d
-                           :n5 :a})
-
-(def -next (next-states -graph 11111 -position))
-
-(apply merge-with concat
-       (sorted-map)
-       (map (fn [[cost position]] {cost [position]}) -next))
-
-(defn next-states-for-positions [graph base-cost positions]
-  (mapcat (partial next-states graph base-cost) positions))
-
-(next-states-for-positions -graph 10 [-position -position])
-
 (defn search [graph initial-position solution-position]
   (loop [visited-positions #{initial-position}
          positions-by-cost (sorted-map 0 #{initial-position})]
@@ -157,16 +113,24 @@
           next (remove (fn [[_ position]] (visited-positions position))
                        (apply concat (map (partial next-states graph cost)
                                           positions)))]
-      (cond (some (partial = solution-position) positions) cost
-            :else (recur (set/union visited-positions positions)
-                         (apply merge-with set/union
-                                other-positions-by-cost
-                                (map (fn [[cost position]] {cost #{position}})
-                                     next)))))))
+      (if (positions solution-position) cost
+          (recur (set/union visited-positions positions)
+                 (apply merge-with set/union
+                        other-positions-by-cost
+                        (map (fn [[cost position]] {cost #{position}})
+                             next)))))))
 
-(time (search -graph -position solution-position))
+(def input-regex #".*\n.*\n.*([ABCD])#([ABCD])#([ABCD])#([ABCD]).*\n.*([ABCD])#([ABCD])#([ABCD])#([ABCD]).*\n.*")
 
-;; (let [positions-by-cost (sorted-map 3 [:ok] 4 :nah)
-;;       [cost positions] (first positions-by-cost)
-;;       other-positions-by-cost (dissoc positions-by-cost cost)]
-;;   (first (assoc other-positions-by-cost 8 :boop)))
+(time (let [position
+            (->> (slurp "23.txt")
+                 (re-matches input-regex)
+                 rest
+                 (map (fn [letter] (case letter "A" :a "B" :b "C" :c "D" :d)))
+                 (zipmap [:a0 :b0 :c0 :d0 :a1 :b1 :c1 :d1]))]
+        (search (make-graph)
+                position
+                {:a0 :a :a1 :a
+                 :b0 :b :b1 :b
+                 :c0 :c :c1 :c
+                 :d0 :d :d1 :d})))
