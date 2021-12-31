@@ -20,39 +20,40 @@
   (assoc state dest digit))
 
 (defn do-add-lit [dest lit state]
-  (update state dest (partial + lit)))
+  (update state dest (fn [exp] `(+ ~exp ~lit))))
 
 (defn do-add-reg [dest src state]
-  (update state dest (partial + (state src))))
+  (update state dest (fn [exp] `(+ ~exp ~(state src)))))
 
 (defn do-mul-lit [dest lit state]
-  (update state dest (partial * lit)))
+  (update state dest (fn [exp] `(* ~exp ~lit))))
 
 (defn do-mul-reg [dest src state]
-  (update state dest (partial * (state src))))
+  (update state dest (fn [exp] `(* ~exp ~(state src)))))
 
 (defn do-div-lit [dest lit state]
-  (update state dest (fn [dividend] (quot dividend lit))))
+  (update state dest (fn [exp] `(quot ~exp ~lit))))
 
 (defn do-div-reg [dest src state]
-  (update state dest (fn [dividend] (quot dividend (state src)))))
+  (update state dest (fn [exp] `(quot ~exp ~(state src)))))
 
 (defn do-mod-lit [dest lit state]
-  (update state dest (fn [dividend] (mod dividend lit))))
+  (update state dest (fn [exp] `(mod ~exp ~lit))))
 
 (defn do-mod-reg [dest src state]
   (update state dest
-          (fn [dividend]
-            (let [divisor (state src)]
-              (if (or (< dividend 0) (<= divisor 0))
-                (throw (ArithmeticException.))
-                (mod dividend divisor))))))
+          (fn [exp]
+            `(let [dividend ~exp
+                   divisor ~(state src)]
+               (if (or (< exp 0) (<= divisor 0))
+                 (throw (ArithmeticException.))
+                 (mod exp divisor))))))
 
 (defn do-eql-lit [dest lit state]
-  (update state dest (fn [value] (if (= lit value) 1 0))))
+  (update state dest (fn [exp] `(if (= ~exp ~lit) 1 0))))
 
 (defn do-eql-reg [dest src state]
-  (update state dest (fn [value] (if (= (state src) value) 1 0))))
+  (update state dest (fn [exp] `(if (= ~exp ~(state src)) 1 0))))
 
 (do-inp :w {:w 5} 3)
 (do-add-lit :w 3 {:w 5})
@@ -66,25 +67,29 @@
 (do-eql-lit :w 3 {:w 5})
 (do-eql-reg :w :x {:w 5 :x 3})
 
-(defn assemble [[op dest src lit]]
+(defn assemble [state [op dest src lit]]
   (case op
-    "inp" (partial do-inp dest)
-    "add" (if lit (partial do-add-lit dest lit)
-              (partial do-add-reg dest src))
-    "mul" (if lit (partial do-mul-lit dest lit)
-              (partial do-mul-reg dest src))
-    "div" (if lit (partial do-div-lit dest lit)
-              (partial do-div-reg dest src))
-    "mod" (if lit (partial do-mod-lit dest lit)
-              (partial do-mod-reg dest src))
-    "eql" (if lit (partial do-eql-lit dest lit)
-              (partial do-eql-reg dest src))))
+    "inp" (partial do-inp dest state)
+    "add" (if lit (do-add-lit dest lit state)
+              (do-add-reg dest src state))
+    "mul" (if lit (do-mul-lit dest lit state)
+              (do-mul-reg dest src state))
+    "div" (if lit (do-div-lit dest lit state)
+              (do-div-reg dest src state))
+    "mod" (if lit (do-mod-lit dest lit state)
+              (do-mod-reg dest src state))
+    "eql" (if lit (do-eql-lit dest lit state)
+              (do-eql-reg dest src state))))
 
-(defn assemble-step [instructions]
-  (->> instructions
-       (map assemble)
-       reverse
-       (apply comp)))
+(defn assemble-step [[inp & instructions]]
+  (fn [state digit]
+    (reduce assemble
+            ((assemble state inp) digit)
+            instructions)))
+
+((assemble-step [["inp" :w] ["add" :w nil 1]]) {} 1)
+
+((assemble {} ["inp" :w]) 3)
 
 ;; when out of steps to run, if z is zero, return the number, else nil
 ;; when there are steps to run, run the next step with every digit
