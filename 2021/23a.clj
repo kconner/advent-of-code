@@ -95,6 +95,7 @@
 
 (def -graph (make-graph))
 (def -position (initial-position :b :a :c :d :b :c :d :a))
+;; (def -position (initial-position :a :c :d :c :a :d :b :b))
 
 (def step-costs {:a 1 :b 10 :c 100 :d 1000})
 
@@ -123,8 +124,19 @@
 (def solution-position
   {:a0 :a :a1 :a :b0 :b :b1 :b :c0 :c :c1 :c :d0 :d :d1 :d})
 
+(def -solution-position solution-position)
+
 (next-states -graph 11111 -position)
 (next-states -graph 12345 solution-position)
+
+(next-states -graph 12513 {:a1 :a
+                           :b0 :b
+                           :b1 :b
+                           :c0 :c
+                           :c1 :c
+                           :d0 :d
+                           :d1 :d
+                           :n5 :a})
 
 (def -next (next-states -graph 11111 -position))
 
@@ -137,25 +149,22 @@
 
 (next-states-for-positions -graph 10 [-position -position])
 
-(defn search [graph initial-position depth]
+(defn search [graph initial-position solution-position]
   (loop [visited-positions #{initial-position}
-         positions-by-cost (sorted-map 0 (list initial-position))
-         depth depth]
+         positions-by-cost (sorted-map 0 #{initial-position})]
     (let [[cost positions] (first positions-by-cost)
           other-positions-by-cost (dissoc positions-by-cost cost)
           next (remove (fn [[_ position]] (visited-positions position))
                        (apply concat (map (partial next-states graph cost)
                                           positions)))]
-      (println [cost (count positions)])
-      (if (zero? depth) [cost (map (fn [pos] [pos (edges graph pos)]) positions)]
-          (if (some (partial = solution-position) positions) cost
-              (recur (set/union visited-positions (set (map second next)))
-                     (apply merge-with concat
-                            other-positions-by-cost
-                            (map (fn [[cost position]] {cost [position]}) next))
-                     (dec depth)))))))
+      (cond (some (partial = solution-position) positions) cost
+            :else (recur (set/union visited-positions positions)
+                         (apply merge-with set/union
+                                other-positions-by-cost
+                                (map (fn [[cost position]] {cost #{position}})
+                                     next)))))))
 
-(time (search -graph -position 3000))
+(time (search -graph -position solution-position))
 
 ;; (let [positions-by-cost (sorted-map 3 [:ok] 4 :nah)
 ;;       [cost positions] (first positions-by-cost)
