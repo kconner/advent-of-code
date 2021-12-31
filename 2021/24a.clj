@@ -101,10 +101,7 @@
 (defn initial-state [digits]
   {:w 0 :x 0 :y 0 :z 0 :digits digits :initial-digits digits})
 
-(time (let [instructions (->> (slurp "24.txt")
-                              string/split-lines
-                              (map parse))
-            steps (->> (split-steps instructions)
-                       (map assemble-step))
+(time (let [instructions (map parse (string/split-lines (slurp "24.txt")))
+            steps (map assemble-step (split-steps instructions))
             initial-state {:w 0 :x 0 :y 0 :z 0}]
         (search initial-state steps)))
