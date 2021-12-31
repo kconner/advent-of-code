@@ -16,8 +16,8 @@
         (conj (split-steps more)
               (conj step inp)))))
 
-(defn do-inp [dest state digit]
-  (assoc state dest digit))
+(defn do-inp [dest state]
+  (assoc state dest 'digit))
 
 (defn do-add-lit [dest lit state]
   (update state dest (fn [exp] `(+ ~exp ~lit))))
@@ -55,7 +55,7 @@
 (defn do-eql-reg [dest src state]
   (update state dest (fn [exp] `(if (= ~exp ~(state src)) 1 0))))
 
-(do-inp :w {:w 5} 3)
+(do-inp :w {:w 5})
 (do-add-lit :w 3 {:w 5})
 (do-add-reg :w :x {:w 5 :x 3})
 (do-mul-lit :w 3 {:w 5})
@@ -69,7 +69,7 @@
 
 (defn assemble [state [op dest src lit]]
   (case op
-    "inp" (partial do-inp dest state)
+    "inp" (do-inp dest state)
     "add" (if lit (do-add-lit dest lit state)
               (do-add-reg dest src state))
     "mul" (if lit (do-mul-lit dest lit state)
@@ -81,11 +81,13 @@
     "eql" (if lit (do-eql-lit dest lit state)
               (do-eql-reg dest src state))))
 
-(defn assemble-step [[inp & instructions]]
-  (fn [state digit]
-    (reduce assemble
-            ((assemble state inp) digit)
-            instructions)))
+(defn assemble-step [instructions]
+  (reduce assemble
+          '{:w (:w state)
+            :x (:x state)
+            :y (:y state)
+            :z (:z state)}
+          instructions))
 
 ((assemble-step [["inp" :w] ["add" :w nil 1]]) {} 1)
 
