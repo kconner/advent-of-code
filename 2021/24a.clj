@@ -78,18 +78,6 @@
 (defn asm-eql-reg [dest src state]
   (update state dest (fn [exp] `(if (= ~exp ~(state src)) 1 0))))
 
-;; (asm-inp :w {:w 5})
-;; (asm-add-lit :w 3 {:w 5})
-;; (asm-add-reg :w :x {:w 5 :x 3})
-;; (asm-mul-lit :w 3 {:w 5})
-;; (asm-mul-reg :w :x {:w 5 :x 3})
-;; (asm-div-lit :w 5 {:w 13})
-;; (asm-div-reg :w :x {:w 13 :x 5})
-;; (asm-mod-lit :w 5 {:w 13})
-;; (asm-mod-reg :w :x {:w 13 :x 5})
-;; (asm-eql-lit :w 3 {:w 5})
-;; (asm-eql-reg :w :x {:w 5 :x 3})
-
 (defn assemble [state [op dest src lit]]
   (case op
     "inp" (asm-inp dest state)
@@ -111,13 +99,6 @@
 (defn compile-step [instructions]
   (memoize (eval (assemble-step instructions))))
 
-(assemble-step [["inp" :w] ["add" :w nil 3] ["mul" :z :w]])
-(assemble-step [["mul" :z nil 0] ["add" :z nil 1] ["mul" :z nil 0]])
-
-;; ((compile-step [["inp" :w] ["add" :w nil 3]]) {} 5)
-
-;; (assemble {} ["inp" :w])
-
 ;; when out of steps to run, if z is zero, return the number, else nil
 ;; when there are steps to run, run the next step with every digit
 ;; if the result was successful, conj digits on the way back up
@@ -131,8 +112,12 @@
             (range 9 0 -1))))
 
 (time (let [instructions (map parse (string/split-lines (slurp "24.txt")))
-            ;; steps (map assemble-step (split-steps instructions))
             steps (map compile-step (split-steps instructions))
             initial-z 0]
-        ;; (first steps)))
         (search 0 steps)))
+
+(comment
+  (time (let [instructions (map parse (string/split-lines (slurp "24.txt")))
+              steps (map assemble-step (split-steps instructions))
+              initial-z 0]
+          (first steps))))
