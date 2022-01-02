@@ -67,7 +67,13 @@
                  (mod exp divisor))))))
 
 (defn asm-eql-lit [dest lit state]
-  (update state dest (fn [exp] `(if (= ~exp ~lit) 1 0))))
+  (update state dest (fn [exp]
+                       (if (and (zero? lit)
+                                (coll? exp)
+                                (= 'if (first exp)))
+                         (let [[op condition then else] exp]
+                           `(~op ~condition ~else ~then))
+                         `(if (= ~exp ~lit) 1 0)))))
 
 (defn asm-eql-reg [dest src state]
   (update state dest (fn [exp] `(if (= ~exp ~(state src)) 1 0))))
@@ -128,5 +134,5 @@
             ;; steps (map assemble-step (split-steps instructions))
             steps (map compile-step (split-steps instructions))
             initial-z 0]
-            ;; (first steps)))
+        ;; (first steps)))
         (search 0 steps)))
