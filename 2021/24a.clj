@@ -20,28 +20,42 @@
   (assoc state dest 'user/digit))
 
 (defn asm-add-lit [dest lit state]
-  (update state dest (fn [exp] `(+ ~exp ~lit))))
+  (case lit
+    0 state
+    (update state dest (fn [exp]
+                         (if (number? exp) (+ exp lit)
+                             `(+ ~exp ~lit))))))
 
 (defn asm-add-reg [dest src state]
-  (update state dest (fn [exp] `(+ ~exp ~(state src)))))
+  (update state dest (fn [exp]
+                       (if (= 0 exp) (state src)
+                           `(+ ~exp ~(state src))))))
 
 (defn asm-mul-lit [dest lit state]
   (case lit
     0 (assoc state dest lit)
     1 state
-    (update state dest (fn [exp] `(* ~exp ~lit)))))
+    (update state dest (fn [exp]
+                         (if (number? exp) (* exp lit)
+                             `(* ~exp ~lit))))))
 
 (defn asm-mul-reg [dest src state]
   (update state dest (fn [exp] `(* ~exp ~(state src)))))
 
 (defn asm-div-lit [dest lit state]
-  (update state dest (fn [exp] `(quot ~exp ~lit))))
+  (case lit
+    1 state
+    (update state dest (fn [exp]
+                         (if (number? exp) (quot exp lit)
+                             `(quot ~exp ~lit))))))
 
 (defn asm-div-reg [dest src state]
   (update state dest (fn [exp] `(quot ~exp ~(state src)))))
 
 (defn asm-mod-lit [dest lit state]
-  (update state dest (fn [exp] `(mod ~exp ~lit))))
+  (update state dest (fn [exp]
+                       (if (number? exp) (mod exp lit)
+                           `(mod ~exp ~lit)))))
 
 (defn asm-mod-reg [dest src state]
   (update state dest
@@ -85,18 +99,15 @@
               (asm-eql-reg dest src state))))
 
 (defn assemble-step [instructions]
-  `(fn [state digit]
-     ~(reduce assemble
-              '{:w (:w user/state)
-                :x (:x user/state)
-                :y (:y user/state)
-                :z (:z user/state)}
-              instructions)))
+  `(fn [z digit]
+     (let [state {:z z}]
+       ~(:z (reduce assemble '{:z (:z user/state)} instructions)))))
 
 (defn compile-step [instructions]
   (memoize (eval (assemble-step instructions))))
 
-;; (assemble-step [["inp" :w] ["add" :w nil 3]])
+(assemble-step [["inp" :w] ["add" :w nil 3] ["mul" :z :w]])
+(assemble-step [["mul" :z nil 0] ["add" :z nil 1] ["mul" :z nil 0]])
 
 ;; ((compile-step [["inp" :w] ["add" :w nil 3]]) {} 5)
 
@@ -105,16 +116,17 @@
 ;; when out of steps to run, if z is zero, return the number, else nil
 ;; when there are steps to run, run the next step with every digit
 ;; if the result was successful, conj digits on the way back up
-(defn search [state [step & steps]]
-  (if (nil? step) (when (zero? (:z state)) ())
+(defn search [z [step & steps]]
+  (if (nil? step) (when (zero? z) ())
       (some (fn [digit]
-              (try (let [state (step state digit)
-                         result (search state steps)]
+              (try (let [z (step z digit)
+                         result (search z steps)]
                      (when result (conj result digit)))
                    (catch Exception _ nil)))
             (range 9 0 -1))))
 
 (time (let [instructions (map parse (string/split-lines (slurp "24.txt")))
+            ;; steps (map assemble-step (split-steps instructions))
             steps (map compile-step (split-steps instructions))
-            initial-state {:w 0 :x 0 :y 0 :z 0}]
-        (search initial-state steps)))
+            initial-z 0]
+        (search 0 steps)))
