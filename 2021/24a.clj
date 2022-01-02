@@ -100,8 +100,7 @@
 
 (defn assemble-step [instructions]
   `(fn [z digit]
-     (let [state {:z z}]
-       ~(:z (reduce assemble '{:z (:z user/state)} instructions)))))
+     ~(:z (reduce assemble '{:z user/z} instructions))))
 
 (defn compile-step [instructions]
   (memoize (eval (assemble-step instructions))))
@@ -129,4 +128,5 @@
             ;; steps (map assemble-step (split-steps instructions))
             steps (map compile-step (split-steps instructions))
             initial-z 0]
+            ;; (first steps)))
         (search 0 steps)))
