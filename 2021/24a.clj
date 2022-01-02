@@ -26,7 +26,10 @@
   (update state dest (fn [exp] `(+ ~exp ~(state src)))))
 
 (defn asm-mul-lit [dest lit state]
-  (update state dest (fn [exp] `(* ~exp ~lit))))
+  (case lit
+    0 (assoc state dest lit)
+    1 state
+    (update state dest (fn [exp] `(* ~exp ~lit)))))
 
 (defn asm-mul-reg [dest src state]
   (update state dest (fn [exp] `(* ~exp ~(state src)))))
