@@ -3,15 +3,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "2",
+    name: "advent-of-code-2023-swift",
     platforms: [
         .macOS(.v14)
     ],
     products: [
-        .executable(
-            name: "2",
-            targets: ["2"]
-        )
+        .executable(name: "2", targets: ["2"])
     ],
     dependencies: [
         .package(
