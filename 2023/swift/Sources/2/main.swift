@@ -1,5 +1,7 @@
 import Parsing
 
+// Model
+
 struct Game {
     let id: Int
     let handfuls: [Handful]
@@ -20,6 +22,8 @@ enum Color: String {
     case green = "green"
     case blue = "blue"
 }
+
+// Parsing
 
 let terminals: Set<Character> = [",", ";", "\n"]
 let colorParser = Parse(input: Substring.self, Color.init(rawValue:)) {
@@ -57,6 +61,8 @@ let inputParser = Parse(input: Substring.self) {
 
 let games = try! inputParser.parse(String(contentsOfFile: "2.txt").dropLast())
 
+// Problem 1
+
 extension Game {
     func lowerBound(of color: Color) -> Int {
         handfuls.compactMap(\.countsByColor[color]).reduce(0, max)
@@ -75,6 +81,8 @@ print(
         .map(\.id)
         .reduce(0, +)
 )
+
+// Problem 2
 
 extension Color: CaseIterable {}
 
