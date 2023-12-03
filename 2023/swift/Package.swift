@@ -8,7 +8,8 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "2", targets: ["2"])
+        .executable(name: "2", targets: ["Day2"]),
+        .executable(name: "3", targets: ["Day3"]),
     ],
     dependencies: [
         .package(
@@ -18,10 +19,13 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "2",
+            name: "Day2",
             dependencies: [
                 .product(name: "Parsing", package: "swift-parsing"),
             ]
-        )
+        ),
+        .executableTarget(
+            name: "Day3"
+        ),
     ]
 )
