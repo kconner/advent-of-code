@@ -10,6 +10,7 @@ let package = Package(
     products: [
         .executable(name: "2", targets: ["Day2"]),
         .executable(name: "3", targets: ["Day3"]),
+        .executable(name: "4", targets: ["Day4"]),
     ],
     dependencies: [
         .package(
@@ -26,6 +27,12 @@ let package = Package(
         ),
         .executableTarget(
             name: "Day3"
+        ),
+        .executableTarget(
+            name: "Day4",
+            dependencies: [
+                .product(name: "Parsing", package: "swift-parsing"),
+            ]
         ),
     ]
 )
