@@ -101,13 +101,13 @@ print(
 
 // Problem 2
 
-struct ItemRanges {
+struct ItemSet {
     let indices: IndexSet
     let kind: String
 }
 
 extension Input {
-    var seedIndexSet: ItemRanges {
+    var seedItemSet: ItemSet {
         let ranges = zip(
             stride(from: 0, to: seedItems.count, by: 2).map { seedItems[$0].index },
             stride(from: 1, to: seedItems.count, by: 2).map { seedItems[$0].index }
@@ -120,7 +120,7 @@ extension Input {
             indices.insert(integersIn: range.indices)
         }
 
-        return ItemRanges(indices: indices, kind: "seed")
+        return ItemSet(indices: indices, kind: "seed")
     }
 }
 
@@ -134,10 +134,10 @@ extension RangeMapping {
 }
 
 extension Map {
-    subscript(itemRanges: ItemRanges) -> ItemRanges {
-        assert(itemRanges.kind == sourceKind)
+    subscript(itemSet: ItemSet) -> ItemSet {
+        assert(itemSet.kind == sourceKind)
 
-        var remainingIndices = itemRanges.indices
+        var remainingIndices = itemSet.indices
         var resultIndices = IndexSet()
 
         for range in remainingIndices.rangeView {
@@ -150,7 +150,7 @@ extension Map {
             }
         }
 
-        return ItemRanges(
+        return ItemSet(
             indices: resultIndices.union(remainingIndices),
             kind: destinationKind
         )
@@ -159,8 +159,8 @@ extension Map {
 
 print(
     input.maps
-        .reduce(input.seedIndexSet) { itemRanges, map in
-            map[itemRanges]
+        .reduce(input.seedItemSet) { itemSet, map in
+            map[itemSet]
         }
         .indices
         .first!
