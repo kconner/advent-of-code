@@ -23,12 +23,12 @@ const input = fs.readFileSync('6.txt', 'utf8')
 // See demonstration in 6.gcx
 const distance = (totalTime, holdTime) => (totalTime - holdTime) * holdTime
 
-const rangeUp = function* (start, upperBound) {
-    for (let i = start + 1; i < upperBound; ++i) { yield i }
+const rangeUp = function* (start) {
+    for (let i = start + 1; true; ++i) { yield i }
 }
 
-const rangeDown = function* (start, lowerBound) {
-    for (let i = start; i > lowerBound; --i) { yield i }
+const rangeDown = function* (start) {
+    for (let i = start; true; --i) { yield i }
 }
 
 const assert = (condition, message) => {
@@ -54,8 +54,8 @@ const solutionCount = ({ totalTime, distanceToBeat }) => {
         }
     }
 
-    checkRange(rangeUp(midpoint, totalTime))
-    checkRange(rangeDown(midpoint, 0))
+    checkRange(rangeUp(midpoint))
+    checkRange(rangeDown(midpoint))
 
     return count
 }
