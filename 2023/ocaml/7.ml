@@ -34,7 +34,7 @@ let items = with_file "7.txt" file_lines |> List.map line_item
 
 (* Problem 1 *)
 
-let hand_card_frequencies ((h, _) : item) : card_frequencies = 
+let hand_card_frequencies (h : hand) : card_frequencies = 
     let freqs = Hashtbl.create 13 in
     let add_card (c : card) : unit =
         let freq = try Hashtbl.find freqs c with Not_found -> 0 in
@@ -59,9 +59,9 @@ let card_value (c : card) : char =
     | _ -> c
 
 let hand_score (h : hand) : score =
+    let freqs = hand_card_frequencies h in
     let type_score = Seq.init 5 (fun i -> i + 1)
-        |> Seq.map (fun i ->
-            hand_card_frequencies (h, 123) |> n_of_a_kind_count i) in
+        |> Seq.map (fun i -> n_of_a_kind_count i freqs) in
     let card_score = Seq.init 5 (fun i -> String.get h i |> card_value) in
     Seq.fold_left
         (fun acc x -> Seq.cons x acc)
