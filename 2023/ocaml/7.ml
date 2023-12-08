@@ -110,18 +110,12 @@ let hand_score_with_wilds (h : hand) : score =
     Hashtbl.remove f 'J' ;
     let fff = frequency_frequencies f |> frequency_frequency in
     let type_score = match 0 with
-        | _ when fff 5 = 1 -> 'C'
-        | _ when wild_count >= 4 || fff (5 - wild_count) = 1 -> 'B'
-        | _ when fff 4 = 1 -> 'A'
-        | _ when wild_count >= 3 || fff (4 - wild_count) = 1 -> '9'
-        | _ when (fff 3 = 1 && fff 2 = 1) -> '8'
-        | _ when wild_count = 1 && fff 2 = 2 -> '7'
-        | _ when fff 3 = 1 -> '6'
-        | _ when wild_count >= 2 || fff (3 - wild_count) = 1 -> '5'
-        | _ when fff 2 = 2 -> '4'
-        | _ when wild_count >= 1 && fff 2 = 1 -> '3'
-        | _ when fff 2 = 1 -> '2'
-        | _ when wild_count >= 1 -> '1'
+        | _ when wild_count >= 4 || fff (5 - wild_count) = 1 -> '6'
+        | _ when wild_count >= 3 || fff (4 - wild_count) = 1 -> '5'
+        | _ when wild_count = 1 && fff 2 = 2 || fff 3 = 1 && fff 2 = 1 -> '4'
+        | _ when wild_count >= 2 || fff (3 - wild_count) = 1 -> '3'
+        | _ when wild_count >= 1 && fff 2 >= 1 || fff 2 = 2 -> '2'
+        | _ when wild_count >= 1 || fff 2 = 1 -> '1'
         | _ -> '0'
         in
     let card_score = Seq.init 5 (fun i -> String.get h i
