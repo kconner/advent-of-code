@@ -8,6 +8,7 @@ type item = (hand * int)
 type card_frequencies = (card, int) Hashtbl.t
 type score = string
 type scored_item = (hand * int * score)
+type frequency_frequencies = (int, int) Hashtbl.t
 
 (* Parsing *)
 
@@ -60,9 +61,10 @@ let card_value (c : card) : char =
 
 let hand_score (h : hand) : score =
     let freqs = hand_card_frequencies h in
-    let type_score = Seq.init 5 (fun i -> i + 1)
+    let type_score = Seq.init 4 (fun i -> i + 2)
         |> Seq.map (fun i -> n_of_a_kind_count i freqs) in
-    let card_score = Seq.init 5 (fun i -> String.get h i |> card_value) in
+    let card_score = Seq.init 5 (fun i -> String.get h i
+        |> card_value) in
     Seq.fold_left
         (fun acc x -> Seq.cons x acc)
         card_score
@@ -83,7 +85,57 @@ let problem1 () : unit =
 
 (* Problem 2 *)
 
+let frequency_frequencies (f : card_frequencies) : frequency_frequencies =
+    let ff = Hashtbl.create 13 in
+    Hashtbl.iter (fun _ k ->
+        let v = Hashtbl.find_opt ff k |> Option.value ~default:0 in
+        Hashtbl.replace ff k (v + 1))
+        f ;
+    ff
+
+let card_value_with_wilds (c : card) : char =
+    match c with
+    | 'J' -> '1'
+    | _ -> card_value c
+
+let frequency_frequency (ff : frequency_frequencies) (f : int) : int =
+    Hashtbl.find_opt ff f |> Option.value ~default:0
+
+let kind_score_char (b : bool) : char =
+    Char.chr (Char.code '0' + if b then 1 else 0)
+
+let hand_score_with_wilds (h : hand) : score =
+    let f = hand_card_frequencies h in
+    let wild_count = Hashtbl.find_opt f 'J' |> Option.value ~default:0 in
+    Hashtbl.remove f 'J' ;
+    let fff = frequency_frequencies f |> frequency_frequency in
+    let type_score = match 0 with
+        | _ when fff 5 = 1 -> 'C'
+        | _ when wild_count >= 4 || fff (5 - wild_count) = 1 -> 'B'
+        | _ when fff 4 = 1 -> 'A'
+        | _ when wild_count >= 3 || fff (4 - wild_count) = 1 -> '9'
+        | _ when (fff 3 = 1 && fff 2 = 1) -> '8'
+        | _ when wild_count = 1 && fff 2 = 2 -> '7'
+        | _ when fff 3 = 1 -> '6'
+        | _ when wild_count >= 2 || fff (3 - wild_count) = 1 -> '5'
+        | _ when fff 2 = 2 -> '4'
+        | _ when wild_count >= 1 && fff 2 = 1 -> '3'
+        | _ when fff 2 = 1 -> '2'
+        | _ when wild_count >= 1 -> '1'
+        | _ -> '0'
+        in
+    let card_score = Seq.init 5 (fun i -> String.get h i
+        |> card_value_with_wilds) in
+    Seq.cons type_score card_score |> String.of_seq
+
 let problem2 () : unit =
-    ()
+    items
+    |> List.map (fun (h, b) -> (h, b, hand_score_with_wilds h))
+    (* |> List.iter (fun (h, _, s) -> print_endline (h ^ " " ^ s)) *)
+    |> List.sort compare_scored_items
+    |> List.mapi (fun i (_, b, _) -> b * (i + 1))
+    |> List.fold_left (+) 0
+    |> string_of_int
+    |> print_endline
 
 let () = problem1 () ; problem2 ()
