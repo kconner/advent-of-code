@@ -9,6 +9,8 @@ type square = char
 type map = (position, square) Hashtbl.t
 type turn = LT | RT
 type step = turn option * viewpoint
+type path = step Seq.t
+type side = LH | RH
 
 (* Parsing *)
 
@@ -38,7 +40,11 @@ let start_square_and_heading (map : map) ((sx, sy) : position) : (square * headi
     let ((_, _, heading, squaresA), (_, _, _, squaresB)) = match connections with
         | a :: b :: [] -> (a, b)
         | _ -> failwith "< 2 connections" in
-    let common_square = Seq.find (fun square -> String.contains squaresB square) (String.to_seq squaresA) |> Option.get in
+    let common_square =
+        Seq.find
+            (fun square -> String.contains squaresB square)
+            (String.to_seq squaresA)
+        |> Option.get in
     (common_square, heading)
 
 let map_and_start (lines : string list) : (map * viewpoint) =
@@ -98,6 +104,11 @@ let string_of_step ((turn, (position, heading)) : step) : string =
     ^ " -> "
     ^ string_of_heading heading
 
+let string_of_side (side : side) : string =
+    match side with
+    | LH -> "LH"
+    | RH -> "RH"
+
 (* Problem 1 *)
 
 let next_position ((position, heading) : viewpoint) : position =
@@ -123,7 +134,7 @@ let next_step (map : map) (viewpoint : viewpoint) : step =
     let (turn, next_heading) = turn_and_next_heading next_square (snd viewpoint) in
     (turn, (next_position, next_heading))
 
-let steps_in_cycle (map : map) (viewpoint : viewpoint) : step Seq.t =
+let path_from_start (map : map) (viewpoint : viewpoint) : step Seq.t =
     let end_position = fst viewpoint in
     Seq.unfold
         (fun viewpoint ->
@@ -139,7 +150,7 @@ let steps_in_cycle (map : map) (viewpoint : viewpoint) : step Seq.t =
 
 let problem1 () =
     start_viewpoint
-    |> steps_in_cycle map
+    |> path_from_start map
     |> Seq.length
     |> fun count -> count / 2
     |> string_of_int
@@ -147,55 +158,75 @@ let problem1 () =
 
 (* Problem 2 *)
 
+let path_inside_side (path : path) : side =
+    let right_turns_minus_left = path
+        |> Seq.filter_map fst
+        |> Seq.map (function RT -> 1 | LT -> -1)
+        |> Seq.fold_left (+) 0 in
+    if right_turns_minus_left = 4 then RH
+    else if right_turns_minus_left = -4 then LH
+    else failwith "Invalid path"
+
 (*
-Find the count of cells inside the route.
+Find the count of cells inside the path.
 
-The set of cells inside the route is the set of cells that are in the map
-    but not on the route itself
+The set of cells inside the path is the set of cells that are in the map
+    but not on the path itself
     and which have a membership score
-        which is positive when the route is overall clockwise
-        or negative if the route is overall counterclockwise.
+        which is positive when the path's inside is to the right
+        or negative if the path's inside is to the left.
 
-The route is overall clockwise if it has more right turns than left turns.
+The path's inside is to the right if it has more right turns than left turns.
 Because all turns are at right angles and the path doesn't cross itself,
     it should be the case that the total of right turns minus left turns is
-        4, indicating clockwise,
-        or -4, indicating counterclockwise.
+        4, indicating inside to the right,
+        or -4, indicating inside to the left.
         other values indicate a mistake.
 
 The membership score for a cell is the sum of the membership score for the cell's row and the membership score for the cell's column.
 
 The membership score for a row or column is
-    the number of turns on the route whose position and resulting heading, together called its viewpoint, would view the row or column as on the right
+    the number of turns on the path whose position and resulting heading, together called its viewpoint, would view the row or column as on the right
     minus those that would view the row or column as on the left.
 That means that turns resulting in vertical headings affect the membership score of columns,
     and turns resulting in horizontal headings affect the membership score of rows.
 
-Therefore, while following the route, we should collect into a sequence of traversed steps:
+Therefore, while following the path, we should collect into a sequence of traversed steps:
 - the viewpoint of the step (position and heading)
 - an optional turn, which is the direction of the turn if the step is a turn, or None if the step is not a turn
 
 Given a sequence of such items, we can determine
-- a filtered route of only the turns
-    - the membership score of each row,
-        by filtering the turns with horizontal viewpoints,
-        then folding over them and accumulating
-            +1 when the row is on the viewpoint's right
-            and -1 when the row is on its left
-    - the membership score of each column, similarly but with the vertical viewpoints
+- whether the inside of the path is to the right or left, by counting the turns
+    - if the count is 4, the inside is on the right
+    - if the count is -4, the inside is on the left
+    - otherwise, the path is invalid
+- the membership score of each row,
+    by filtering the turns with horizontal viewpoints,
+    then folding over them and accumulating
+        +1 when the row is on the inside side
+        and -1 when the row is on the outside side
+- the membership score of each column, similarly but with the vertical viewpoints
 - the membership score of each cell, by adding the membership score of its row and column
-- whether the route is overall clockwise or counterclockwise, by counting the turns
-    - if the count is 4, the route is clockwise
-    - if the count is -4, the route is counterclockwise
-    - otherwise, the route is invalid
-- the set of cells inside the route, by filtering the map for cells that are not on the route and whose membership score is positive if the route is clockwise or negative if the route is counterclockwise
-- the count of cells inside the route, by counting the cells in the set
+- the set of cells inside the path, by filtering the map for cells that are not on the path and whose membership score is positive
+    (or is it, those that are at least 4?)
+- the count of cells inside the path, by counting the cells in the set
 
 *)
 
 let problem2 () =
-    print_map map ;
-    steps_in_cycle map start_viewpoint
-    |> Seq.iter (fun step -> print_endline (string_of_step step))
+    let path = path_from_start map start_viewpoint in
+    let inside_side = path_inside_side path in
+
+    path
+    |> Seq.map string_of_step
+    |> Seq.iter print_endline ;
+
+    inside_side
+    |> string_of_side
+    |> print_endline ;
+
+    0
+    |> string_of_int
+    |> print_endline
 
 let () = problem1 () ; problem2 ()
