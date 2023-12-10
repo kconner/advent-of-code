@@ -25,33 +25,36 @@ let file_lines (channel : in_channel) : string list =
     in
     loop []
 
-let map_and_start (lines : string list) : (map * position) =
+let start_square_and_heading (map : map) ((sx, sy) : position) : (square * heading) =
+    let connections = List.filter
+        (fun ((dx, dy), adjacent_square_filter, heading, _) ->
+            let adjacent = (sx + dx, sy + dy) in
+            match Hashtbl.find_opt map adjacent with
+            | None -> false
+            | Some square -> String.contains adjacent_square_filter square)
+        [((-1, 0), "-LF", L, "-J7"); ((0, -1), "|7F", U, "|LJ"); ((1, 0), "-J7", R, "-LF"); ((0, 1), "|LJ", D, "|7F")] in
+    let ((_, _, heading, squaresA), (_, _, _, squaresB)) = match connections with
+        | a :: b :: [] -> (a, b)
+        | _ -> failwith "< 2 connections" in
+    let common_square = Seq.find (fun square -> String.contains squaresB square) (String.to_seq squaresA) |> Option.get in
+    (common_square, heading)
+
+let map_and_start (lines : string list) : (map * viewpoint) =
     let map = Hashtbl.create 400000 in
-    let start = ref (-1, -1) in
+    let start_position = ref (-1, -1) in
     List.iteri
         (fun y line ->
             String.iteri
                 (fun x square ->
                     Hashtbl.add map (x, y) square ;
-                    if square = 'S' then start := (x, y))
+                    if square = 'S' then start_position := (x, y))
                 line)
         lines ;
-    (map, !start)
+    let (start_square, start_heading) = start_square_and_heading map !start_position in
+    Hashtbl.replace map !start_position start_square;
+    (map, (!start_position, start_heading))
 
-let (map, start_position) = with_file "10.txt" file_lines |> map_and_start
-
-let start_heading =
-    [(-1, 0, "-LF", L);
-        (0, -1, "|7F", U);
-        (1, 0, "-J7", R);
-        (0, 1, "|LJ", D)]
-    |> List.find
-        (fun (dx, dy, filter, heading) ->
-            let adjacent = (fst start_position + dx, snd start_position + dy) in
-            match Hashtbl.find_opt map adjacent with
-            | None -> false
-            | Some square -> String.contains filter square)
-    |> fun (_, _, _, heading) -> heading
+let (map, start_viewpoint) = with_file "10.txt" file_lines |> map_and_start
 
 (* Debugging *)
 
@@ -103,10 +106,11 @@ let next_position (position : position) (heading : heading) : position =
     | R -> (fst position + 1, snd position)
     | D -> (fst position, snd position + 1)
 
-let steps_to_start (map : map) (viewpoint : viewpoint) : int =
+let steps_in_cycle (map : map) (viewpoint : viewpoint) : int =
+    let end_position = fst viewpoint in
     let rec loop (position, heading) count =
         let next_position = next_position position heading in
-        if next_position = start_position
+        if next_position = end_position
             then count + 1
             else
                 let next_square = Hashtbl.find map next_position in
@@ -116,8 +120,8 @@ let steps_to_start (map : map) (viewpoint : viewpoint) : int =
     loop viewpoint 0
 
 let problem1 () =
-    (start_position, start_heading)
-    |> steps_to_start map
+    start_viewpoint
+    |> steps_in_cycle map
     |> fun count -> count / 2
     |> string_of_int
     |> print_endline
