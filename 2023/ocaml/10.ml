@@ -11,7 +11,8 @@ type map = (position, square) Hashtbl.t
 type turn = LT | RT
 type step = turn option * viewpoint
 type path = step Seq.t
-type side = LH | RH
+type path_side = LH | RH
+type line_membership_scores = int array
 
 (* Parsing *)
 
@@ -106,7 +107,7 @@ let string_of_step ((turn, (position, heading)) : step) : string =
     ^ " -> "
     ^ string_of_heading heading
 
-let string_of_side (side : side) : string =
+let string_of_side (side : path_side) : string =
     match side with
     | LH -> "LH"
     | RH -> "RH"
@@ -160,7 +161,7 @@ let problem1 () =
 
 (* Problem 2 *)
 
-let path_inside_side (path : path) : side =
+let path_inside (path : path) : path_side =
     let right_turns_minus_left = path
         |> Seq.filter_map fst
         |> Seq.map (function RT -> 1 | LT -> -1)
@@ -168,6 +169,46 @@ let path_inside_side (path : path) : side =
     if right_turns_minus_left = 4 then RH
     else if right_turns_minus_left = -4 then LH
     else failwith "Invalid path"
+
+let line_membership_scores (map : map) ((mx, my) : dimensions) (path : path) (inside : path_side) : (line_membership_scores * line_membership_scores) =
+    let turn_viewpoints = path
+        |> Seq.filter (fun (turn, _) -> turn != None)
+        |> Seq.map snd in
+    let (horizontal_viewpoints, vertical_viewpoints) = turn_viewpoints
+        |> Seq.partition (fun (_, heading) -> heading = L || heading = R) in
+    let negate_when_inside_is_left (count : int) : int =
+        if inside == LH then -count else count in
+    let row_score (y : int) : int =
+        horizontal_viewpoints
+        |> Seq.map (fun ((_, ty), heading) ->
+            match (ty - y, heading) with
+            | (0, _) -> 0
+            | (dy, L) when dy < 0 -> -1
+            | (dy, L) when 0 < dy -> +1
+            | (dy, R) when dy < 0 -> +1
+            | (dy, R) when 0 < dy -> -1
+            | _ -> failwith "Invalid turn viewpoint")
+        |> Seq.fold_left (+) 0
+        |> negate_when_inside_is_left in
+    let column_score (x : int) : int =
+        vertical_viewpoints
+        |> Seq.map (fun ((tx, _), heading) ->
+            match (tx - x, heading) with
+            | (0, _) -> 0
+            | (dx, U) when dx < 0 -> +1
+            | (dx, U) when 0 < dx -> -1
+            | (dx, D) when dx < 0 -> -1
+            | (dx, D) when 0 < dx -> +1
+            | _ -> failwith "Invalid turn viewpoint")
+        |> Seq.fold_left (+) 0
+        |> negate_when_inside_is_left in
+    (Array.init my row_score, Array.init mx column_score)
+
+let non_path_positions (map : map) (path : path) : (position, unit) Hashtbl.t =
+    let non_path_positions = Hashtbl.create 400000 in
+    Hashtbl.iter (fun position _ -> Hashtbl.add non_path_positions position ()) map ;
+    path |> Seq.iter (fun (_, (position, _)) -> Hashtbl.remove non_path_positions position) ;
+    non_path_positions
 
 (*
 Find the count of cells inside the path.
@@ -208,7 +249,8 @@ Given a sequence of such items, we can determine
         +1 when the row is on the inside side
         and -1 when the row is on the outside side
 - the membership score of each column, similarly but with the vertical viewpoints
-- the membership score of each cell, by adding the membership score of its row and column
+- the cells not in the path, by copying the map and removing cells that are on the path
+- the membership score of each cell not in the path, by adding the membership score of its row and column
 - the set of cells inside the path, by filtering the map for cells that are not on the path and whose membership score is positive
     (or is it, those that are at least 4?)
 - the count of cells inside the path, by counting the cells in the set
@@ -217,18 +259,24 @@ Given a sequence of such items, we can determine
 
 let problem2 () =
     let path = path_from_start map start_viewpoint in
-    let inside_side = path_inside_side path in
+    let inside = path_inside path in
+    let (row_scores, column_scores) = line_membership_scores map dimensions path inside in
+    let non_path_positions = non_path_positions map path in
+    let cell_scores = Hashtbl.fold
+        (fun (x, y) _ list ->
+            (row_scores.(y) + column_scores.(x)) :: list)
+        non_path_positions
+        [] in
 
-    path
-    |> Seq.map string_of_step
-    |> Seq.iter print_endline ;
-
-    inside_side
-    |> string_of_side
+    cell_scores
+    |> List.filter (fun score -> 0 < score)
+    |> List.length
+    |> string_of_int
     |> print_endline ;
 
-    0
-    |> string_of_int
-    |> print_endline
+    print_newline () ;
+    row_scores |> Array.iter (fun score -> string_of_int score |> print_endline) ;
+    print_newline () ;
+    column_scores |> Array.iter (fun score -> string_of_int score |> print_endline) 
 
 let () = problem1 () ; problem2 ()
