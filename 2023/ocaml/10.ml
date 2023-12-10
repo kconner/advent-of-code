@@ -7,6 +7,8 @@ type heading = L | U | R | D
 type viewpoint = position * heading
 type square = char
 type map = (position, square) Hashtbl.t
+type turn = LT | RT
+type step = turn option * viewpoint
 
 (* Parsing *)
 
@@ -81,53 +83,119 @@ let string_of_heading (heading : heading) : string =
     | R -> "R"
     | D -> "D"
 
-let string_of_viewpoint (viewpoint : viewpoint) : string =
-    let (position, heading) = viewpoint in
-    Printf.sprintf "%s %s"
-        (string_of_position position)
-        (string_of_heading heading)
+let string_of_turn (turn : turn option) : string =
+    match turn with
+    | None -> "None"
+    | Some turn -> match turn with
+        | LT -> "LT"
+        | RT -> "RT"
+
+let string_of_step ((turn, (position, heading)) : step) : string =
+    "-> "
+    ^ string_of_position position
+    ^ ", "
+    ^ string_of_turn turn
+    ^ " -> "
+    ^ string_of_heading heading
 
 (* Problem 1 *)
 
-let next_heading (square : square) (heading : heading) : heading =
-    match (square, heading) with
-    | ('-', L) -> L | ('-', R) -> R
-    | ('|', U) -> U | ('|', D) -> D
-    | ('L', D) -> R | ('L', L) -> U
-    | ('J', D) -> L | ('J', R) -> U
-    | ('7', U) -> L | ('7', R) -> D
-    | ('F', U) -> R | ('F', L) -> D
-    | _ -> failwith "Invalid square"
-
-let next_position (position : position) (heading : heading) : position =
+let next_position ((position, heading) : viewpoint) : position =
     match heading with
     | L -> (fst position - 1, snd position)
     | U -> (fst position, snd position - 1)
     | R -> (fst position + 1, snd position)
     | D -> (fst position, snd position + 1)
 
-let steps_in_cycle (map : map) (viewpoint : viewpoint) : int =
+let turn_and_next_heading (square : square) (heading : heading) : (turn option * heading) =
+    match (square, heading) with
+    | ('-', L) -> (None, L) | ('-', R) -> (None, R)
+    | ('|', U) -> (None, U) | ('|', D) -> (None, D)
+    | ('L', D) -> (Some LT, R) | ('L', L) -> (Some RT, U)
+    | ('J', D) -> (Some RT, L) | ('J', R) -> (Some LT, U)
+    | ('7', U) -> (Some LT, L) | ('7', R) -> (Some RT, D)
+    | ('F', U) -> (Some RT, R) | ('F', L) -> (Some LT, D)
+    | _ -> failwith "Invalid square"
+
+let next_step (map : map) (viewpoint : viewpoint) : step =
+    let next_position = next_position viewpoint in
+    let next_square = Hashtbl.find map next_position in
+    let (turn, next_heading) = turn_and_next_heading next_square (snd viewpoint) in
+    (turn, (next_position, next_heading))
+
+let steps_in_cycle (map : map) (viewpoint : viewpoint) : step Seq.t =
     let end_position = fst viewpoint in
-    let rec loop (position, heading) count =
-        let next_position = next_position position heading in
-        if next_position = end_position
-            then count + 1
-            else
-                let next_square = Hashtbl.find map next_position in
-                let next_heading = next_heading next_square heading in
-                loop (next_position, next_heading) (count + 1)
-    in
-    loop viewpoint 0
+    Seq.unfold
+        (fun viewpoint ->
+            match viewpoint with
+            | None -> None
+            | Some viewpoint ->
+            let next_step = next_step map viewpoint in
+            let next_viewpoint = snd next_step in
+            if fst next_viewpoint = end_position
+                then Some (next_step, None)
+                else Some (next_step, Some next_viewpoint))
+        (Some viewpoint)
 
 let problem1 () =
     start_viewpoint
     |> steps_in_cycle map
+    |> Seq.length
     |> fun count -> count / 2
     |> string_of_int
     |> print_endline
 
 (* Problem 2 *)
 
-let problem2 () = ()
+(*
+Find the count of cells inside the route.
+
+The set of cells inside the route is the set of cells that are in the map
+    but not on the route itself
+    and which have a membership score
+        which is positive when the route is overall clockwise
+        or negative if the route is overall counterclockwise.
+
+The route is overall clockwise if it has more right turns than left turns.
+Because all turns are at right angles and the path doesn't cross itself,
+    it should be the case that the total of right turns minus left turns is
+        4, indicating clockwise,
+        or -4, indicating counterclockwise.
+        other values indicate a mistake.
+
+The membership score for a cell is the sum of the membership score for the cell's row and the membership score for the cell's column.
+
+The membership score for a row or column is
+    the number of turns on the route whose position and resulting heading, together called its viewpoint, would view the row or column as on the right
+    minus those that would view the row or column as on the left.
+That means that turns resulting in vertical headings affect the membership score of columns,
+    and turns resulting in horizontal headings affect the membership score of rows.
+
+Therefore, while following the route, we should collect into a sequence of traversed steps:
+- the viewpoint of the step (position and heading)
+- an optional turn, which is the direction of the turn if the step is a turn, or None if the step is not a turn
+
+Given a sequence of such items, we can determine
+- a filtered route of only the turns
+    - the membership score of each row,
+        by filtering the turns with horizontal viewpoints,
+        then folding over them and accumulating
+            +1 when the row is on the viewpoint's right
+            and -1 when the row is on its left
+    - the membership score of each column, similarly but with the vertical viewpoints
+- the membership score of each cell, by adding the membership score of its row and column
+- whether the route is overall clockwise or counterclockwise, by counting the turns
+    - if the count is 4, the route is clockwise
+    - if the count is -4, the route is counterclockwise
+    - otherwise, the route is invalid
+- the set of cells inside the route, by filtering the map for cells that are not on the route and whose membership score is positive if the route is clockwise or negative if the route is counterclockwise
+- the count of cells inside the route, by counting the cells in the set
+
+*)
+
+let problem2 () =
+    print_map map ;
+    steps_in_cycle map start_viewpoint
+    |> Seq.iter (fun step -> print_endline (string_of_step step))
 
 let () = problem1 () ; problem2 ()
