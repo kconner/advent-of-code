@@ -6,6 +6,7 @@ type position = int * int
 type heading = L | U | R | D
 type viewpoint = position * heading
 type square = char
+type dimensions = (int * int)
 type map = (position, square) Hashtbl.t
 type turn = LT | RT
 type step = turn option * viewpoint
@@ -47,8 +48,9 @@ let start_square_and_heading (map : map) ((sx, sy) : position) : (square * headi
         |> Option.get in
     (common_square, heading)
 
-let map_and_start (lines : string list) : (map * viewpoint) =
+let map_dimensions_and_start (lines : string list) : (map * dimensions * viewpoint) =
     let map = Hashtbl.create 400000 in
+    let dimensions = (List.hd lines |> String.length, List.length lines) in
     let start_position = ref (-1, -1) in
     List.iteri
         (fun y line ->
@@ -60,15 +62,15 @@ let map_and_start (lines : string list) : (map * viewpoint) =
         lines ;
     let (start_square, start_heading) = start_square_and_heading map !start_position in
     Hashtbl.replace map !start_position start_square;
-    (map, (!start_position, start_heading))
+    (map, dimensions, (!start_position, start_heading))
 
-let (map, start_viewpoint) = with_file "10.txt" file_lines |> map_and_start
+let (map, dimensions, start_viewpoint) = with_file "10.txt" file_lines |> map_dimensions_and_start
 
 (* Debugging *)
 
-let print_map (map : map) : unit =
-    for y = 0 to 5 do
-        for x = 0 to 5 do
+let print_map (map : map) ((mx, my) : dimensions) : unit =
+    for y = 0 to my do
+        for x = 0 to mx do
             let square = Hashtbl.find_opt map (x, y) in
             print_char
                 (match square with
