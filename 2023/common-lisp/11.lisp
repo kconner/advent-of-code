@@ -15,10 +15,10 @@
 
 ;;; Problems
 
-(defparameter compression-ratio 2)
+(defparameter *compression-ratio* 2)
 
 ; Uncomment for problem 2.
-; (setf compression-ratio 1000000)
+; (setf *compression-ratio* 1000000)
 
 (defparameter map-compressed-size
   (make-size
@@ -45,9 +45,9 @@
     
     set))
 
-; The uncompressed width of an interval is 1 if it's in the set of unit intervals, otherwise it's a given compression-ratio.
-(defun uncompressed-width (compression-ratio unit-set compressed-index)
-  (if (gethash compressed-index unit-set) 1 compression-ratio))
+; The uncompressed width of an interval is 1 if it's in the set of unit intervals, otherwise it's *compression-ratio*.
+(defun uncompressed-width (unit-set compressed-index)
+  (if (gethash compressed-index unit-set) 1 *compression-ratio*))
 
 ; A mapping of compressed index to uncompressed index is the result of iterating over the compressed intervals and incrementing by the uncompressed width.
 (defun make-index-map (unit-set compressed-size)
@@ -55,7 +55,7 @@
         (table (make-hash-table :size 200)))
     (loop for compressed-index from 0 below compressed-size
           do (setf (gethash compressed-index table) uncompressed-index)
-             (incf uncompressed-index (uncompressed-width compression-ratio unit-set compressed-index)))
+             (incf uncompressed-index (uncompressed-width unit-set compressed-index)))
     table))
 
 (defparameter row-index-map (make-index-map unit-rows (size-height map-compressed-size)))
