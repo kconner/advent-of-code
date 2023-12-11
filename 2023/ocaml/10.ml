@@ -12,7 +12,7 @@ type turn = LT | RT
 type step = turn option * viewpoint
 type path = step Seq.t
 type path_side = LH | RH
-type line_membership_scores = int array
+type position_set = (position, unit) Hashtbl.t
 
 (* Parsing *)
 
@@ -66,51 +66,6 @@ let map_dimensions_and_start (lines : string list) : (map * dimensions * viewpoi
     (map, dimensions, (!start_position, start_heading))
 
 let (map, dimensions, start_viewpoint) = with_file "10.txt" file_lines |> map_dimensions_and_start
-
-(* Debugging *)
-
-let print_map (map : map) ((mx, my) : dimensions) : unit =
-    for y = 0 to my do
-        for x = 0 to mx do
-            let square = Hashtbl.find_opt map (x, y) in
-            print_char
-                (match square with
-                | None -> ' '
-                | Some square -> square)
-        done ;
-        print_newline ()
-    done
-
-let string_of_position (position : position) : string =
-    let (x, y) = position in
-    Printf.sprintf "(%d, %d)" x y
-
-let string_of_heading (heading : heading) : string =
-    match heading with
-    | L -> "L"
-    | U -> "U"
-    | R -> "R"
-    | D -> "D"
-
-let string_of_turn (turn : turn option) : string =
-    match turn with
-    | None -> "None"
-    | Some turn -> match turn with
-        | LT -> "LT"
-        | RT -> "RT"
-
-let string_of_step ((turn, (position, heading)) : step) : string =
-    "-> "
-    ^ string_of_position position
-    ^ ", "
-    ^ string_of_turn turn
-    ^ " -> "
-    ^ string_of_heading heading
-
-let string_of_side (side : path_side) : string =
-    match side with
-    | LH -> "LH"
-    | RH -> "RH"
 
 (* Problem 1 *)
 
@@ -170,113 +125,48 @@ let path_inside (path : path) : path_side =
     else if right_turns_minus_left = -4 then LH
     else failwith "Invalid path"
 
-let line_membership_scores (map : map) ((mx, my) : dimensions) (path : path) (inside : path_side) : (line_membership_scores * line_membership_scores) =
-    let turn_viewpoints = path
-        |> Seq.filter (fun (turn, _) -> turn != None)
-        |> Seq.map snd in
-    let (horizontal_viewpoints, vertical_viewpoints) = turn_viewpoints
-        |> Seq.partition (fun (_, heading) -> heading = L || heading = R) in
-    let negate_when_inside_is_left (count : int) : int =
-        if inside == LH then -count else count in
-    let row_score (y : int) : int =
-        horizontal_viewpoints
-        |> Seq.map (fun ((_, ty), heading) ->
-            match (ty - y, heading) with
-            | (0, _) -> 0
-            | (dy, L) when dy < 0 -> -1
-            | (dy, L) when 0 < dy -> +1
-            | (dy, R) when dy < 0 -> +1
-            | (dy, R) when 0 < dy -> -1
-            | _ -> failwith "Invalid turn viewpoint")
-        |> Seq.fold_left (+) 0
-        |> negate_when_inside_is_left in
-    let column_score (x : int) : int =
-        vertical_viewpoints
-        |> Seq.map (fun ((tx, _), heading) ->
-            match (tx - x, heading) with
-            | (0, _) -> 0
-            | (dx, U) when dx < 0 -> +1
-            | (dx, U) when 0 < dx -> -1
-            | (dx, D) when dx < 0 -> -1
-            | (dx, D) when 0 < dx -> +1
-            | _ -> failwith "Invalid turn viewpoint")
-        |> Seq.fold_left (+) 0
-        |> negate_when_inside_is_left in
-    (Array.init my row_score, Array.init mx column_score)
+let positions_on_path (path : path) : position_set =
+    let positions_on_path = Hashtbl.create 400000 in
+    path |> Seq.iter (fun (_, (position, _)) -> Hashtbl.add positions_on_path position ()) ;
+    positions_on_path
 
-let non_path_positions (map : map) (path : path) : (position, unit) Hashtbl.t =
-    let non_path_positions = Hashtbl.create 400000 in
-    Hashtbl.iter (fun position _ -> Hashtbl.add non_path_positions position ()) map ;
-    path |> Seq.iter (fun (_, (position, _)) -> Hashtbl.remove non_path_positions position) ;
-    non_path_positions
+let walkable_inside_headings (inside : path_side) ((turn, (_, heading)) : step) : heading list =
+    match (inside, turn, heading) with
+    | (RH, Some RT, _) -> [] | (LH, Some LT, _) -> []
+    | (RH, None, L) -> [U] | (RH, None, U) -> [R] | (RH, None, R) -> [D] | (RH, None, D) -> [L]
+    | (LH, None, L) -> [D] | (LH, None, D) -> [R] | (LH, None, R) -> [U] | (LH, None, U) -> [L]
+    | (RH, Some LT, L) -> [R; U] | (RH, Some LT, U) -> [D; R] | (RH, Some LT, R) -> [L; D] | (RH, Some LT, D) -> [U; L]
+    | (LH, Some RT, L) -> [R; D] | (LH, Some RT, D) -> [U; R] | (LH, Some RT, R) -> [L; U] | (LH, Some RT, U) -> [D; L]
 
-(*
-Find the count of cells inside the path.
-
-The set of cells inside the path is the set of cells that are in the map
-    but not on the path itself
-    and which have a membership score
-        which is positive when the path's inside is to the right
-        or negative if the path's inside is to the left.
-
-The path's inside is to the right if it has more right turns than left turns.
-Because all turns are at right angles and the path doesn't cross itself,
-    it should be the case that the total of right turns minus left turns is
-        4, indicating inside to the right,
-        or -4, indicating inside to the left.
-        other values indicate a mistake.
-
-The membership score for a cell is the sum of the membership score for the cell's row and the membership score for the cell's column.
-
-The membership score for a row or column is
-    the number of turns on the path whose position and resulting heading, together called its viewpoint, would view the row or column as on the right
-    minus those that would view the row or column as on the left.
-That means that turns resulting in vertical headings affect the membership score of columns,
-    and turns resulting in horizontal headings affect the membership score of rows.
-
-Therefore, while following the path, we should collect into a sequence of traversed steps:
-- the viewpoint of the step (position and heading)
-- an optional turn, which is the direction of the turn if the step is a turn, or None if the step is not a turn
-
-Given a sequence of such items, we can determine
-- whether the inside of the path is to the right or left, by counting the turns
-    - if the count is 4, the inside is on the right
-    - if the count is -4, the inside is on the left
-    - otherwise, the path is invalid
-- the membership score of each row,
-    by filtering the turns with horizontal viewpoints,
-    then folding over them and accumulating
-        +1 when the row is on the inside side
-        and -1 when the row is on the outside side
-- the membership score of each column, similarly but with the vertical viewpoints
-- the cells not in the path, by copying the map and removing cells that are on the path
-- the membership score of each cell not in the path, by adding the membership score of its row and column
-- the set of cells inside the path, by filtering the map for cells that are not on the path and whose membership score is positive
-    (or is it, those that are at least 4?)
-- the count of cells inside the path, by counting the cells in the set
-
-*)
+let positions_inside_path (path : path) (inside : path_side) (positions_on_path : position_set) : position_set =
+    let positions_inside_path = Hashtbl.create 400000 in
+    path
+    |> Seq.iter (fun step -> 
+        walkable_inside_headings inside step
+        |> List.iter (fun heading ->
+            let rec walk ((px, py) : position) ((dx, dy) : (int * int)) : unit =
+                let position = (px + dx, py + dy) in
+                if Hashtbl.mem positions_on_path position
+                    then ()
+                    else (
+                        Hashtbl.replace positions_inside_path position () ;
+                        walk position (dx, dy)
+                    )
+            in
+            let (_, (position, _)) = step in
+            let velocity = match heading with
+                | L -> (-1, 0) | U -> (0, -1) | R -> (1, 0) | D -> (0, 1) in
+            walk position velocity)
+        ) ;
+    positions_inside_path
 
 let problem2 () =
     let path = path_from_start map start_viewpoint in
     let inside = path_inside path in
-    let (row_scores, column_scores) = line_membership_scores map dimensions path inside in
-    let non_path_positions = non_path_positions map path in
-    let cell_scores = Hashtbl.fold
-        (fun (x, y) _ list ->
-            (row_scores.(y) + column_scores.(x)) :: list)
-        non_path_positions
-        [] in
-
-    cell_scores
-    |> List.filter (fun score -> 0 < score)
-    |> List.length
+    let positions_on_path = positions_on_path path in
+    positions_inside_path path inside positions_on_path
+    |> Hashtbl.length
     |> string_of_int
-    |> print_endline ;
-
-    print_newline () ;
-    row_scores |> Array.iter (fun score -> string_of_int score |> print_endline) ;
-    print_newline () ;
-    column_scores |> Array.iter (fun score -> string_of_int score |> print_endline) 
+    |> print_endline
 
 let () = problem1 () ; problem2 ()
