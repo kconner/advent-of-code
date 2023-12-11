@@ -3,6 +3,8 @@
 (defstruct point x y)
 (defstruct size width height)
 
+(defparameter *compression-ratio* 2)
+
 ;;; Parsing
 
 (defun file-lines (filename)
@@ -11,33 +13,28 @@
           while line
           collect line)))
 
-(defparameter lines (file-lines "11.txt"))
+(defparameter *lines* (file-lines "11.txt"))
 
-;;; Problems
+;;; Problem 1
 
-(defparameter *compression-ratio* 2)
-
-; Uncomment for problem 2.
-; (setf *compression-ratio* 1000000)
-
-(defparameter map-compressed-size
+(defun map-size ()
   (make-size
-    :width (length (first lines))
-    :height (length lines)))
+    :width (length (first *lines*))
+    :height (length *lines*)))
 
 ; Unit rows are the set of line indices of lines that contain any #s.
-(defparameter unit-rows
+(defun unit-rows ()
   (let ((set (make-hash-table :size 200)))
-    (loop for line in lines
+    (loop for line in *lines*
           for row from 0
           when (find #\# line)
           do (setf (gethash row set) t))
     set))
 
 ; Unit columns are the set of character indices of each # found in any line.
-(defparameter unit-columns
+(defun unit-columns ()
   (let ((set (make-hash-table :size 200)))
-    (loop for line in lines
+    (loop for line in *lines*
           do (loop for column from 0
                    for char across line
                    when (char= #\# char)
@@ -58,20 +55,19 @@
              (incf uncompressed-index (uncompressed-width unit-set compressed-index)))
     table))
 
-(defparameter row-index-map (make-index-map unit-rows (size-height map-compressed-size)))
-
-(defparameter column-index-map (make-index-map unit-columns (size-width map-compressed-size)))
-
 ; Galaxy locations are all the pairs of x and y where a # is found in the input. Look up x given the column and y given the row.
-(defparameter galaxy-points
-  (loop for line in lines
-        for row from 0
-        append (loop for column from 0
-                     for char across line
-                     when (char= #\# char)
-                     collect (make-point
-                               :x (gethash column column-index-map)
-                               :y (gethash row row-index-map)))))
+(defun galaxy-points ()
+  (let* ((map-size (map-size))
+         (row-index-map (make-index-map (unit-rows) (size-height map-size)))
+         (column-index-map (make-index-map (unit-columns) (size-width map-size))))
+    (loop for line in *lines*
+          for row from 0
+          append (loop for column from 0
+                       for char across line
+                       when (char= #\# char)
+                       collect (make-point
+                                 :x (gethash column column-index-map)
+                                 :y (gethash row row-index-map))))))
 
 ; All pairs of items in a list is each car paired with each item of its own cdr, flattened.
 (defun all-pairs (list)
@@ -92,4 +88,11 @@
              (apply #'manhattan-distance pair))
            (all-pairs galaxy-points))))
 
-(print (galaxy-pair-distance-sum galaxy-points))
+(let ((*compression-ratio* 2))
+  (print (galaxy-pair-distance-sum (galaxy-points))))
+
+;;; Problem 2
+
+(let ((*compression-ratio* 1000000))
+  (print (galaxy-pair-distance-sum (galaxy-points))))
+
