@@ -127,6 +127,8 @@
         do (setf list (cdr list)))
   list)
 
+(defparameter *search-for-runs-cache* (make-hash-table :test #'equal))
+
 ; To search, given springs known to begin with ? or # and runs known to be nonempty,
 ; - If the current character is ?,
 ;   - Return the sum of
@@ -135,12 +137,17 @@
 ; - Otherwise the current character is #, so
 ;   - Return a test of the current run starting at this character
 (defun search-for-runs (characters runs)
-  (if (null characters)
-      0
-      (if (char= (car characters) #\?)
-          (+ (test-run characters runs)
-             (search-for-runs (skip-leading-dots (cdr characters)) runs))
-          (test-run characters runs))))
+  (let ((key (list characters runs)))
+    (multiple-value-bind (val foundp) (gethash key *search-for-runs-cache*)
+      (if foundp
+          val
+          (setf (gethash key *search-for-runs-cache*)
+                (if (null characters)
+                    0
+                    (if (char= (car characters) #\?)
+                        (+ (test-run characters runs)
+                           (search-for-runs (skip-leading-dots (cdr characters)) runs))
+                        (test-run characters runs))))))))
 
 ; To test a run starting at a character, given characters known to begin with ? or # and runs known to be nonempty,
 ; - Step forward through the number of characters given by the current run value.
@@ -173,6 +180,7 @@
   (let* ((condition-record (parse-condition-record line))
          (characters (condition-record-springs condition-record))
          (runs (condition-record-damaged-runs condition-record)))
+    (clrhash *search-for-runs-cache*)
     (search-for-runs (skip-leading-dots characters) runs)))
 
 (defun problem1 ()
@@ -201,7 +209,7 @@
          (runs (condition-record-damaged-runs condition-record)))
     (let ((result (search-for-runs (skip-leading-dots (expanded-characters characters))
                      (expanded-runs runs))))
-      (print result)
+      (clrhash *search-for-runs-cache*)
       result)))
 
 (defun problem2 ()
