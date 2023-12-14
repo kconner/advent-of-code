@@ -58,3 +58,41 @@
 
 ;;; Problem 2
 
+(defun flip-char (char)
+  (code-char (- 81 (char-code char))))
+
+(defun print-pattern (pattern)
+  (loop for line in pattern
+        do (print line))
+  (print ""))
+
+; Loop over all characters of all lines of the pattern.
+; Flip the character in place, then check the pattern-score.
+; - When it's not nil, return it.
+; Flip the character back and continue the iteration.
+(defun unsmudged-pattern-score (pattern)
+  ; (print-pattern pattern)
+  (let ((smudged-score (pattern-score pattern)))
+    (loop for line in pattern
+          for line-index from 0
+          do (loop for char across line
+                   for char-index from 0
+                   do (progn
+                        (setf (elt line char-index) (flip-char char))
+                        (print (list line-index char-index))
+                        (print-pattern pattern)
+                        (print-pattern (transpose pattern))
+                        (let ((score (pattern-score pattern)))
+                          (setf (elt line char-index) char)
+                          (when score (print score))
+                          (when (and score (not (equal score smudged-score)))
+                            (return-from unsmudged-pattern-score score))))))))
+
+(unsmudged-pattern-score (car *patterns*))
+; (mapcar #'unsmudged-pattern-score *patterns*)
+; (apply #'+ (mapcar #'unsmudged-pattern-score *patterns*))
+
+(setf p5 (elt *patterns* 5))
+(print-pattern p5)
+(unsmudged-pattern-score p5)
+
