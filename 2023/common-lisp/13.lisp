@@ -25,19 +25,23 @@
 
 ;;; Problem 1
 
-(defun prefix-palindrome-center-index (seq)
+(defun prefix-palindrome-center-index (seq forbidden-result)
   (let ((reflection (list (elt seq 0))))
     (loop for index from 1 to (/ (length seq) 2)
           for reflend from 2 by 2
-          do (if (equal reflection (subseq seq index reflend))
+          do (if (and (not (= forbidden-result index))
+                      (equal reflection (subseq seq index reflend)))
                  (return index)
                  (push (elt seq index) reflection)))))
 
-(defun palindrome-center-index (seq)
-  (or (prefix-palindrome-center-index seq)
-      (let ((index-of-reflection (prefix-palindrome-center-index (reverse seq))))
-        (when index-of-reflection
-          (- (length seq) index-of-reflection)))))
+(defun palindrome-center-index (seq forbidden-result)
+  (let ((seqlength (length seq)))
+    (or (prefix-palindrome-center-index seq forbidden-result)
+        (let ((index-of-reflection
+                (prefix-palindrome-center-index (reverse seq)
+                                                (- seqlength forbidden-result))))
+          (when index-of-reflection
+            (- seqlength index-of-reflection))))))
 
 (defun string->list (s)
   (coerce s 'list))
@@ -49,50 +53,41 @@
   (let ((list-of-char-lists (mapcar #'string->list list-of-strings)))
     (mapcar #'list->string (apply #'mapcar #'list list-of-char-lists))))
 
-(defun pattern-score (pattern)
-  (let ((horizontal-score (palindrome-center-index pattern)))
+(defun pattern-score (pattern &optional (forbidden-score -1))
+  (let ((horizontal-score
+          (palindrome-center-index pattern
+                                   (if (<= 100 forbidden-score )
+                                       (/ forbidden-score 100)
+                                       -1))))
     (if horizontal-score (* 100 horizontal-score)
-        (palindrome-center-index (transpose pattern)))))
+        (palindrome-center-index (transpose pattern)
+                                 (if (<= 100 forbidden-score)
+                                     -1
+                                     forbidden-score)))))
 
-(apply #'+ (mapcar #'pattern-score *patterns*))
+(print (apply #'+ (mapcar #'pattern-score *patterns*)))
 
 ;;; Problem 2
 
 (defun flip-char (char)
   (code-char (- 81 (char-code char))))
 
-(defun print-pattern (pattern)
-  (loop for line in pattern
-        do (print line))
-  (print ""))
-
 ; Loop over all characters of all lines of the pattern.
 ; Flip the character in place, then check the pattern-score.
 ; - When it's not nil, return it.
 ; Flip the character back and continue the iteration.
 (defun unsmudged-pattern-score (pattern)
-  ; (print-pattern pattern)
-  (let ((smudged-score (pattern-score pattern)))
+  (let ((forbidden-score (pattern-score pattern)))
     (loop for line in pattern
           for line-index from 0
           do (loop for char across line
                    for char-index from 0
                    do (progn
                         (setf (elt line char-index) (flip-char char))
-                        (print (list line-index char-index))
-                        (print-pattern pattern)
-                        (print-pattern (transpose pattern))
-                        (let ((score (pattern-score pattern)))
+                        (let ((score (pattern-score pattern forbidden-score)))
                           (setf (elt line char-index) char)
-                          (when score (print score))
-                          (when (and score (not (equal score smudged-score)))
+                          (when score
                             (return-from unsmudged-pattern-score score))))))))
 
-(unsmudged-pattern-score (car *patterns*))
-; (mapcar #'unsmudged-pattern-score *patterns*)
-; (apply #'+ (mapcar #'unsmudged-pattern-score *patterns*))
-
-(setf p5 (elt *patterns* 5))
-(print-pattern p5)
-(unsmudged-pattern-score p5)
+(print (apply #'+ (mapcar #'unsmudged-pattern-score *patterns*)))
 
