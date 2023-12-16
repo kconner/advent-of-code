@@ -34,28 +34,9 @@
                    do (setf (aref array x y) character)))
     array))
 
-(defparameter *board* (lines->board (file->lines "14.test.txt")))
+(defparameter *board* (lines->board (file->lines "14.txt")))
 
 ;;; Problem 1
-
-(defun board-load (board)
-  (let* ((dimensions (array-dimensions board))
-         (mx (first dimensions))
-         (my (second dimensions)))
-    (loop for x from 0 below mx
-          with board-load = 0
-          do (loop for y from 0 below my
-                   for next-cell-load downfrom (1- my)
-                   with rock-load = my
-                   do (case (aref board x y)
-                        (#\O (incf board-load rock-load)
-                             (decf rock-load))
-                        (#\# (setf rock-load next-cell-load))))
-          finally (return board-load))))
-
-(print (board-load *board*))
-
-;;; Problem 2
 
 ; Rotate coordinates into a board coordinate space adjustment applied to a board.
 (defun rotation (board x y view)
@@ -116,7 +97,27 @@
                                  for yy from run-start
                                  do (setf (get-rotated board x yy view) #\O))))))
 
-; Roll north, west, south, and east, and end in the northward orientation again.
+(defun board-load (board)
+  (let* ((dimensions (array-dimensions board))
+         (mx (first dimensions))
+         (my (second dimensions)))
+    (loop for x from 0 below mx
+          with board-load = 0
+          do (loop for y from 0 below my
+                   for rock-load downfrom my
+                   do (when (eql (aref board x y) #\O)
+                        (incf board-load rock-load)))
+          finally (return board-load))))
+
+(defun problem1 ()
+  (let ((board (copy-board *board*)))
+    (tilt board :north)
+    (print (board-load board))))
+
+(print (problem1))
+
+;;; Problem 2
+
 (defun cycle (board)
   (tilt board :north)
   (tilt board :west)
@@ -129,39 +130,14 @@
         (board-visit-hash (make-hash-table :test 'equalp)))
     (loop for i from 0 below 1000000000
           until (gethash board board-visit-hash)
-          do 
-          (setf (gethash board board-visit-hash) i)
-          (print (list i (board-load board)))
-          (cycle board)
-          finally (return (progn
-                            (print i)
-                            (print (board-load board))
-                            (print (gethash board board-visit-hash))
-                            (print (mod (- 1000000000 i)
-                                        (- i (gethash board board-visit-hash))))
-                            (let ((remainder (mod (- 1000000000 i)
-                                                  (- i (gethash board board-visit-hash)))))
-                              (loop for j from 0 below remainder
-                                  do (cycle board) (print (+ j (- 1000000000 remainder)))
-                                  finally (return (board-load board)))))))))
+          do (progn
+               (setf (gethash board board-visit-hash) i)
+               (cycle board))
+          finally (return 
+                    (let ((remainder (mod (- 1000000000 i)
+                                          (- i (gethash board board-visit-hash)))))
+                      (loop for j from 0 below remainder
+                            do (cycle board)
+                            finally (return (board-load board))))))))
 
-(time (problem2))
-
-; …
-
-; when the cycle function is not producing further changes, use the problem 1 function to sum the column scores.
-
-; hypothesis is that it will reach a steady state where there is no change after single cycles anymore.
-; if comparing board states is expensive, i could check only every 1000 cycles or something.
-
-(defun print-grid (columns)
-  (mapcar #'print columns)
-  (print "-"))
-
-; Print 0,0 - 0,mx as a line, then 1-0, 1-mx, etc.
-(defun print-board (board)
-  (loop for y from 0 below (array-dimension board 1)
-        do (loop for x from 0 below (array-dimension board 0)
-                 do (format t "~a" (aref board x y)))
-        (format t "~%")))
-
+(print (problem2))
