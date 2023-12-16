@@ -4,19 +4,6 @@
 (defun make-board (dimensions)
   (make-array dimensions :element-type 'character))
 
-(defun copy-into-board (board copy)
-  (let* ((dimensions (array-dimensions board))
-         (mx (first dimensions))
-         (my (second dimensions)))
-    (loop for x from 0 below mx
-          do (loop for y from 0 below my
-                   do (setf (aref copy x y) (aref board x y))))))
-
-(defun copy-board (board)
-  (let ((copy (make-board (array-dimensions board))))
-    (copy-into-board board copy)
-    copy))
-
 ;;; Parsing
 
 (defun file->lines (filename)
@@ -34,7 +21,8 @@
                    do (setf (aref array x y) character)))
     array))
 
-(defparameter *board* (lines->board (file->lines "14.txt")))
+(defun load-board ()
+  (lines->board (file->lines "14.txt")))
 
 ;;; Problem 1
 
@@ -110,7 +98,7 @@
           finally (return board-load))))
 
 (defun problem1 ()
-  (let ((board (copy-board *board*)))
+  (let ((board (load-board)))
     (tilt board :north)
     (print (board-load board))))
 
@@ -124,9 +112,11 @@
   (tilt board :south)
   (tilt board :east))
 
-; call the cycle function in a loop that technically tops out at one billion runs, but should really stop when the prior and current board states are equal.
+; call the cycle function in a loop that technically tops out at one billion runs,
+; but should really stop when we detect a board state cycle. at that point, skip
+; full cycles and do the remainder.
 (defun problem2 ()
-  (let ((board (copy-board *board*))
+  (let ((board (load-board))
         (board-visit-hash (make-hash-table :test 'equalp)))
     (loop for i from 0 below 1000000000
           until (gethash board board-visit-hash)
