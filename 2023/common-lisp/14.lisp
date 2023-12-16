@@ -34,7 +34,7 @@
                    do (setf (aref array x y) character)))
     array))
 
-(defparameter *board* (lines->board (file->lines "14.txt")))
+(defparameter *board* (lines->board (file->lines "14.test.txt")))
 
 ;;; Problem 1
 
@@ -126,16 +126,26 @@
 ; call the cycle function in a loop that technically tops out at one billion runs, but should really stop when the prior and current board states are equal.
 (defun problem2 ()
   (let ((board (copy-board *board*))
-        (copy (make-board (array-dimensions *board*))))
-    (loop for i from 1 to 100 ; 0000000
-          until (equal board copy)
+        (board-visit-hash (make-hash-table :test 'equalp)))
+    (loop for i from 0 below 1000000000
+          until (gethash board board-visit-hash)
           do 
-          ; (print i)
-          (copy-into-board board copy)
-          (cycle board))
-    (board-load board)))
+          (setf (gethash board board-visit-hash) i)
+          (print (list i (board-load board)))
+          (cycle board)
+          finally (return (progn
+                            (print i)
+                            (print (board-load board))
+                            (print (gethash board board-visit-hash))
+                            (print (mod (- 1000000000 i)
+                                        (- i (gethash board board-visit-hash))))
+                            (let ((remainder (mod (- 1000000000 i)
+                                                  (- i (gethash board board-visit-hash)))))
+                              (loop for j from 0 below remainder
+                                  do (cycle board) (print (+ j (- 1000000000 remainder)))
+                                  finally (return (board-load board)))))))))
 
-(problem2)
+(time (problem2))
 
 ; …
 
