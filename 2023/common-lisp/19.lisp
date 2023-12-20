@@ -75,7 +75,6 @@
         (|m| (part-m part))
         (|a| (part-a part))
         (|s| (part-s part)))
-    (declare (special |x| |m| |a| |s|))
     (declare (sb-ext:muffle-conditions cl:style-warning))
     (|in|)))
 
@@ -87,3 +86,79 @@
 (print (problem1))
 
 ;;; Problem 2
+
+(defstruct range low high)
+
+(defvar *empty-range* (make-range :low -1 :high -1))
+(defvar *default-range* (make-range :low 1 :high 4001))
+
+(defun range-count (range)
+  (- (range-high range)
+     (range-low range)))
+
+(defun partition-range (range split)
+  (let ((low (range-low range))
+        (high (range-high range)))
+    (cond ((<= split low)
+           (values *empty-range* range))
+          ((<= high split)
+           (values range *empty-range*))
+          (:else
+            (values (make-range :low low :high split)
+                    (make-range :low split :high high))))))
+
+(defvar |x-2|)
+(defvar |m-2|)
+(defvar |a-2|)
+(defvar |s-2|)
+
+(defun R-2 () 0)
+
+(defun A-2 ()
+  (* (range-count |x-2|)
+     (range-count |m-2|)
+     (range-count |a-2|)
+     (range-count |s-2|)))
+
+(defun append-2 (string)
+  (concatenate 'string string "-2"))
+
+(defun workflow-2-body (rules) 
+  (multiple-value-bind (match captures)
+    (ppcre:scan-to-strings "^([a-z]+)([<>])([0-9]+):([ARa-z]+),(.*)$" rules)
+    (if match
+        `(multiple-value-bind
+           ,(if (equal (aref captures 1) "<")
+                '(within without)
+                '(without within))
+           (partition-range ,(intern (append-2 (aref captures 0)))
+                            ,(+ (parse-integer (aref captures 2))
+                                (if (equal (aref captures 1) "<") 0 1)))
+           (+ (let ((,(intern (append-2 (aref captures 0))) within))
+                ,(workflow-2-body (aref captures 3)))
+              (let ((,(intern (append-2 (aref captures 0))) without))
+                ,(workflow-2-body (aref captures 4))))
+           )
+        `(,(intern (append-2 rules))))))
+
+(defun make-workflow-2 (line)
+  (multiple-value-bind (match captures)
+    (ppcre:scan-to-strings "^([^{]+){([^}]+)}$" line)
+    (declare (ignore match))
+    `(defun ,(intern (append-2 (aref captures 0))) ()
+       ,(workflow-2-body (aref captures 1)))))
+
+(declaim (sb-ext:muffle-conditions cl:style-warning))
+(dolist (line (first *paragraphs*))
+  (eval (make-workflow-2 line)))
+(declaim (sb-ext:unmuffle-conditions cl:style-warning))
+
+(defun problem2 ()
+  (let ((|x-2| *default-range*)
+        (|m-2| *default-range*)
+        (|a-2| *default-range*)
+        (|s-2| *default-range*))
+    (declare (sb-ext:muffle-conditions cl:style-warning))
+    (|in-2|)))
+
+(print (problem2))
