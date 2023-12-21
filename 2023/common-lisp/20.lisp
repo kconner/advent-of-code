@@ -42,7 +42,7 @@
                    (make-pulse-payload
                      :source name
                      :highness (notevery #'identity
-                                      (hash-table-values source-highnesses)))))))
+                                         (hash-table-values source-highnesses)))))))
 
 (defstruct module-spec type-signifier name destination-names)
 
@@ -105,30 +105,30 @@
 
 ;;; Problem 1
 
-(defun press-button-and-simulate (module-hash)
-  (let ((pulse-queue (make-array 1000 :fill-pointer 0 :adjustable t)))
-    (vector-push-extend (make-pulse :destination :broadcaster
-                                    :payload (make-pulse-payload :source :button
-                                                                 :highness nil))
-                        pulse-queue)
-    (loop with pulse-queue-cursor = 0
-          while (< pulse-queue-cursor (fill-pointer pulse-queue))
-          for pulse = (aref pulse-queue pulse-queue-cursor)
-          do (progn
-               (incf pulse-queue-cursor)
-               (let* ((destination (pulse-destination pulse))
-                      (module (gethash destination module-hash))
-                      (payload (pulse-payload pulse))
-                      (source (pulse-payload-source payload))
-                      (highness (pulse-payload-highness payload))
-                      (next-pulses (if module
-                                       (funcall module
-                                                source
-                                                highness)
-                                       nil)))
-                 (loop for new-pulse in next-pulses
-                       do (vector-push-extend new-pulse pulse-queue)))))
-    pulse-queue))
+(defvar *initial-pulse*
+  (make-pulse :destination :broadcaster
+              :payload (make-pulse-payload :source :button
+                                           :highness nil)))
+
+(defun press-button-and-simulate (module-hash pulse-queue)
+  (setf (fill-pointer pulse-queue) 0)
+  (vector-push *initial-pulse* pulse-queue)
+  (loop for pulse-queue-cursor from 0
+        while (< pulse-queue-cursor (length pulse-queue))
+        for pulse = (aref pulse-queue pulse-queue-cursor)
+        do 
+        (let* ((destination (pulse-destination pulse))
+               (module (gethash destination module-hash))
+               (payload (pulse-payload pulse))
+               (source (pulse-payload-source payload))
+               (highness (pulse-payload-highness payload))
+               (next-pulses (if module
+                                (funcall module
+                                         source
+                                         highness)
+                                nil)))
+          (loop for new-pulse in next-pulses
+                do (vector-push new-pulse pulse-queue)))))
 
 (defun pulse-queue->counts (pulse-queue)
   (let* ((pulse-count (length pulse-queue))
@@ -139,10 +139,11 @@
     (list low-pulse-count high-pulse-count)))
 
 (defun pulse-counts-over-sequence ()
-  (let ((module-hash (make-module-hash)))
+  (let ((module-hash (make-module-hash))
+        (pulse-queue (make-array 1000000 :fill-pointer 0 :adjustable t)))
     (loop repeat 1000
-          collecting (pulse-queue->counts
-                       (press-button-and-simulate module-hash)) into counts
+          do (press-button-and-simulate module-hash pulse-queue)
+          collecting (pulse-queue->counts pulse-queue) into counts
           finally (return (apply #'mapcar #'+ counts)))))
 
 (defun problem1 ()
@@ -153,14 +154,17 @@
 ;;; Problem 2
 
 (defun low-pulse-to-rx-p (pulse)
-  (and (equal (pulse-destination pulse) :rx)
+  (and (eq (pulse-destination pulse) :rx)
        (not (pulse-payload-highness (pulse-payload pulse)))))
 
 (defun problem2 ()
-  (let ((module-hash (make-module-hash)))
+  (let ((module-hash (make-module-hash))
+        (pulse-queue (make-array 1000000 :fill-pointer 0 :adjustable t)))
     (loop for count from 1
-          for pulse-queue = (press-button-and-simulate module-hash)
+          do (press-button-and-simulate module-hash pulse-queue)
           until (find-if #'low-pulse-to-rx-p pulse-queue)
           finally (return count))))
 
-(print (problem2))
+; (time (problem2))
+
+; (print (problem2))
