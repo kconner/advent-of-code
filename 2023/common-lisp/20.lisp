@@ -110,25 +110,29 @@
               :payload (make-pulse-payload :source :button
                                            :highness nil)))
 
-(defun press-button-and-simulate (module-hash pulse-queue)
+(defun press-button-and-simulate (module-hash pulse-queue &key traced-destination)
   (setf (fill-pointer pulse-queue) 0)
   (vector-push *initial-pulse* pulse-queue)
-  (loop for pulse-queue-cursor from 0
-        while (< pulse-queue-cursor (length pulse-queue))
-        for pulse = (aref pulse-queue pulse-queue-cursor)
-        do 
-        (let* ((destination (pulse-destination pulse))
-               (module (gethash destination module-hash))
-               (payload (pulse-payload pulse))
-               (source (pulse-payload-source payload))
-               (highness (pulse-payload-highness payload))
-               (next-pulses (if module
-                                (funcall module
-                                         source
-                                         highness)
-                                nil)))
-          (loop for new-pulse in next-pulses
-                do (vector-push new-pulse pulse-queue)))))
+  (let ((traced-bits nil))
+    (loop for pulse-queue-cursor from 0
+          while (< pulse-queue-cursor (length pulse-queue))
+          for pulse = (aref pulse-queue pulse-queue-cursor)
+          do 
+          (let* ((destination (pulse-destination pulse))
+                 (module (gethash destination module-hash))
+                 (payload (pulse-payload pulse))
+                 (source (pulse-payload-source payload))
+                 (highness (pulse-payload-highness payload))
+                 (next-pulses (if module
+                                  (funcall module
+                                           source
+                                           highness)
+                                  nil)))
+            (when (and traced-destination (eq destination traced-destination))
+              (push (if highness 1 0) traced-bits))
+            (loop for new-pulse in next-pulses
+                  do (vector-push new-pulse pulse-queue))))
+    traced-bits))
 
 (defun pulse-queue->counts (pulse-queue)
   (let* ((pulse-count (length pulse-queue))
@@ -153,18 +157,40 @@
 
 ;;; Problem 2
 
-(defun low-pulse-to-rx-p (pulse)
-  (and (eq (pulse-destination pulse) :rx)
-       (not (pulse-payload-highness (pulse-payload pulse)))))
+; rx <- &dn <- &fc <- &cc <-> %… <- broadcaster
+;       &dn <- &xp <- &pm <-> %… <- broadcaster
+;       &dn <- &fh <- &bd <-> %… <- broadcaster
+;       &dn <- &dd <- &rs <-> %… <- broadcaster
 
-(defun problem2 ()
-  (let ((module-hash (make-module-hash))
-        (pulse-queue (make-array 1000000 :fill-pointer 0 :adjustable t)))
-    (loop for count from 1
-          do (press-button-and-simulate module-hash pulse-queue)
-          until (find-if #'low-pulse-to-rx-p pulse-queue)
-          finally (return count))))
+; rx gets a low pulse at the first moment that dn's inputs are all high at once.
+; each input to dn, such as fc, has only one input itself so acts as a simple NOT.
+; therefore, when cc, pm, bd, and rs have all signaled low more recently than high,
+; fc, xp, fh, and dd have all signaled high more recently than low,
+; and dn has most recently signaled low to rx.
 
-; (time (problem2))
+; so the problem can be simplified to: when do fc, xp, fh, and dd all receive low at once?
 
-; (print (problem2))
+; first detect repeating patterns in signals to each of fc, xp, fh, and dd.
+; i think there might be repeating cycles every 4096 button presses,
+; because each of these conjunctions is influenced by an isolated series of 12 flip-flops.
+
+; then play those patterns forward all by themselves and count cycles until they are all low.
+
+(defun trace-low-pulses-to-module (module-name)
+  (let ((pulse-queue (make-array 1000000 :fill-pointer 0 :adjustable t))
+        (module-hash (make-module-hash)))
+    (loop for index from 1 to 10000
+          do (let ((traced-bits
+                     (press-button-and-simulate module-hash
+                                                pulse-queue
+                                                :traced-destination module-name)))
+               (when (and (not (null traced-bits))
+                          (find 0 traced-bits :test #'=))
+                 (print (list index traced-bits)))))))
+
+(trace-low-pulses-to-module :fc) ; 3917
+(trace-low-pulses-to-module :xp) ; 3919
+(trace-low-pulses-to-module :fh) ; 4027
+(trace-low-pulses-to-module :dd) ; 4003
+
+(print (* 3917 3919 4027 4003))
