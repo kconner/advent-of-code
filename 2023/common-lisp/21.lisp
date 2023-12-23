@@ -457,3 +457,197 @@
     (end-steps-in-tile (- (substitute-target-distance) entry-distance)
                        entry-point)))
 
+(defun end-steps-in-left-cardinal-tile ()
+  (let* ((start-tile-left-exit (nearest-square (start-square) (left-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-left (second start-tile-left-exit))
+                                     (left-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-left (second distance-and-entry-point))))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first start-tile-left-exit))
+                       entry-point)))
+
+(defun end-steps-in-right-cardinal-tile ()
+  (let* ((start-tile-right-exit (nearest-square (start-square) (right-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-right (second start-tile-right-exit))
+                                     (right-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-right (second distance-and-entry-point))))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first start-tile-right-exit))
+                       entry-point)))
+
+(defun end-steps-in-up-cardinal-tile ()
+  (let* ((start-tile-up-exit (nearest-square (start-square) (up-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-up (second start-tile-up-exit))
+                                     (up-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-up (second distance-and-entry-point))))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first start-tile-up-exit))
+                       entry-point)))
+
+(defun end-steps-in-down-cardinal-tile ()
+  (let* ((start-tile-down-exit (nearest-square (start-square) (down-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-down (second start-tile-down-exit))
+                                     (down-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-down (second distance-and-entry-point))))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first start-tile-down-exit))
+                       entry-point)))
+
+(defun end-steps-in-left-up-inner-side-tile ()
+  (let* ((start-tile-left-exit (nearest-square (start-square) (left-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-left (second start-tile-left-exit))
+                                     (up-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-up (second distance-and-entry-point))))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first start-tile-left-exit))
+                       entry-point)))
+
+(defun end-steps-in-left-down-inner-side-tile ()
+  (let* ((start-tile-left-exit (nearest-square (start-square) (left-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-left (second start-tile-left-exit))
+                                     (down-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-down (second distance-and-entry-point))))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first start-tile-left-exit))
+                       entry-point)))
+
+(defun end-steps-in-right-up-inner-side-tile ()
+  (let* ((start-tile-right-exit (nearest-square (start-square) (right-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-right (second start-tile-right-exit))
+                                     (up-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-up (second distance-and-entry-point))))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first start-tile-right-exit))
+                       entry-point)))
+
+(defun end-steps-in-right-down-inner-side-tile ()
+  (let* ((start-tile-right-exit (nearest-square (start-square) (right-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-right (second start-tile-right-exit))
+                                     (down-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-down (second distance-and-entry-point))))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first start-tile-right-exit))
+                       entry-point)))
+
+(defun end-steps-in-left-up-outer-side-tile ()
+  (let* ((start-tile-left-exit (nearest-square (start-square) (left-edge-bounds)))
+         (left-tile-left-exit (nearest-square
+                                (wrap-to-left (second start-tile-left-exit))
+                                (left-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-left (second left-tile-left-exit))
+                                     (up-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-up (second distance-and-entry-point))))
+    (print (list start-tile-left-exit left-tile-left-exit distance-and-entry-point))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first left-tile-left-exit)
+                          (first start-tile-left-exit))
+                       entry-point)))
+
+(defun end-steps-in-right-up-outer-side-tile ()
+  (let* ((start-tile-right-exit (nearest-square (start-square) (right-edge-bounds)))
+         (right-tile-right-exit (nearest-square
+                                (wrap-to-right (second start-tile-right-exit))
+                                (right-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-right (second right-tile-right-exit))
+                                     (up-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-up (second distance-and-entry-point))))
+    (print (list start-tile-right-exit right-tile-right-exit distance-and-entry-point))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first right-tile-right-exit)
+                          (first start-tile-right-exit))
+                       entry-point)))
+
+(defun end-steps-in-left-down-outer-side-tile ()
+  (let* ((start-tile-left-exit (nearest-square (start-square) (left-edge-bounds)))
+         (left-tile-left-exit (nearest-square
+                                (wrap-to-left (second start-tile-left-exit))
+                                (left-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-left (second left-tile-left-exit))
+                                     (down-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-down (second distance-and-entry-point))))
+    (print (list start-tile-left-exit left-tile-left-exit distance-and-entry-point))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first left-tile-left-exit)
+                          (first start-tile-left-exit))
+                       entry-point)))
+
+(defun end-steps-in-right-down-outer-side-tile ()
+  (let* ((start-tile-right-exit (nearest-square (start-square) (right-edge-bounds)))
+         (right-tile-right-exit (nearest-square
+                                (wrap-to-right (second start-tile-right-exit))
+                                (right-edge-bounds)))
+         (distance-and-entry-point (nearest-square
+                                     (wrap-to-right (second right-tile-right-exit))
+                                     (down-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-down (second distance-and-entry-point))))
+    (print (list start-tile-right-exit right-tile-right-exit distance-and-entry-point))
+    (end-steps-in-tile (- (substitute-target-distance)
+                          entry-distance
+                          (first right-tile-right-exit)
+                          (first start-tile-right-exit))
+                       entry-point)))
+
+(defun problem2 ()
+  (let* ((tile-counts (tile-type-counts (problem2-target-distance)))
+         (corner-tile-count-per-direction (first tile-counts))
+         (outer-side-tile-count-per-direction (second tile-counts))
+         (inner-side-tile-count-per-direction (third tile-counts))
+         (even-internal-count (fourth tile-counts))
+         (odd-internal-count (fifth tile-counts)))
+    (+ (* corner-tile-count-per-direction
+          (+ (end-steps-in-left-cardinal-tile)
+             (end-steps-in-right-cardinal-tile)
+             (end-steps-in-up-cardinal-tile)
+             (end-steps-in-down-cardinal-tile)))
+       (* inner-side-tile-count-per-direction
+          (+ (end-steps-in-left-up-inner-side-tile)
+             (end-steps-in-right-up-inner-side-tile)
+             (end-steps-in-left-down-inner-side-tile)
+             (end-steps-in-right-down-inner-side-tile)))
+       (* outer-side-tile-count-per-direction
+          (+ (end-steps-in-left-up-outer-side-tile)
+             (end-steps-in-right-up-outer-side-tile)
+             (end-steps-in-left-down-outer-side-tile)
+             (end-steps-in-right-down-outer-side-tile)))
+       (* even-internal-count
+          (end-steps-in-even-internal-tile))
+       (* odd-internal-count
+          (end-steps-in-odd-internal-tile)))))
+
+(print (problem2))
+
+; whew let's get out of here
