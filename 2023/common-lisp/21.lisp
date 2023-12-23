@@ -112,7 +112,8 @@
 
 (defun make-distance-field (entry-square)
   (let ((distance-field (make-array (array-dimensions *garden*) :initial-element nil)))
-    (mark-square entry-square 0 distance-field)
+    (when (square-in-bounds-p entry-square)
+      (mark-square entry-square 0 distance-field))
     (fill-distance-field distance-field 1 (list entry-square))
     distance-field))
 
@@ -127,15 +128,17 @@
         sum (loop for y from 0 below (array-dimension distance-field 1)
                   count (funcall predicate (aref distance-field x y)))))
 
-(defun problem1 ()
-  (let ((distance-field (make-distance-field (start-square)))
-        (target-distance 64))
-    ; (print-distance-field *distance-field*)
+(defun end-steps-in-tile (target-distance entry-point)
+  (let ((distance-field (make-distance-field entry-point)))
+    ; (print-distance-field distance-field)
     (distance-field-count-if #'(lambda (distance)
                                  (and distance
                                       (evenp (- target-distance distance))
                                       (<= distance target-distance)))
                              distance-field)))
+
+(defun problem1 ()
+  (end-steps-in-tile 64 (start-square)))
 
 (print (problem1))
 
@@ -232,4 +235,225 @@
 ;   or a repeating cycle?
 ; - immediate and successive in-quadrant tiles: are they all diagonal entering from
 ;   the corner, or what?
+
+; for a given minimum and maximum x and y, iterate over the squares in a given 2D array
+; and call a reducing function, accumulating with a given initial value
+
+(defstruct subarray-bounds min-x max-x min-y max-y)
+
+(defun reduce-subarray (reducing-function initial-value bounds array) 
+  (let ((min-x (subarray-bounds-min-x bounds))
+        (max-x (subarray-bounds-max-x bounds))
+        (min-y (subarray-bounds-min-y bounds))
+        (max-y (subarray-bounds-max-y bounds)))
+    (loop for x from min-x below max-x
+          do (loop for y from min-y below max-y
+                   do (when (aref array x y)
+                        (setf initial-value
+                              (funcall reducing-function
+                                       initial-value
+                                       (list (aref array x y)
+                                             (make-square :x x :y y))))))
+          finally (return initial-value))))
+
+(defun left-edge-bounds ()
+  (make-subarray-bounds :min-x 0 :max-x 1
+                        :min-y 0 :max-y (array-dimension *garden* 1)))
+
+(defun right-edge-bounds ()
+  (let ((max-x (array-dimension *garden* 0)))
+    (make-subarray-bounds :min-x (- max-x 1) :max-x max-x
+                          :min-y 0 :max-y (array-dimension *garden* 1))))
+
+(defun up-edge-bounds ()
+  (make-subarray-bounds :min-x 0 :max-x (array-dimension *garden* 0)
+                        :min-y 0 :max-y 1))
+
+(defun down-edge-bounds ()
+  (let ((max-y (array-dimension *garden* 1)))
+    (make-subarray-bounds :min-x 0 :max-x (array-dimension *garden* 0)
+                          :min-y (- max-y 1) :max-y max-y)))
+
+(defun whole-bounds ()
+  (make-subarray-bounds :min-x 0 :max-x (array-dimension *garden* 0)
+                        :min-y 0 :max-y (array-dimension *garden* 1)))
+
+; a reducing function to find the minimum value and its coordinates
+
+(defun nearest-square (entry-point bounds)
+  (reduce-subarray #'(lambda (minimum item)
+                       (if (< (first item) (first minimum)) item minimum))
+                   (list most-positive-fixnum -1 -1)
+                   bounds
+                   (make-distance-field entry-point)))
+
+(defun farthest-square (entry-point bounds)
+  (reduce-subarray #'(lambda (minimum item)
+                       (if (> (first item) (first minimum)) item minimum))
+                   (list -1 -1 -1)
+                   bounds
+                   (make-distance-field entry-point)))
+
+(defun wrap-to-left (square)
+  (make-square :x (+ (square-x square) (array-dimension *garden* 0))
+               :y (square-y square)))
+
+(defun wrap-to-right (square)
+  (make-square :x (- (square-x square) (array-dimension *garden* 0))
+               :y (square-y square)))
+
+(defun wrap-to-up (square)
+  (make-square :x (square-x square)
+               :y (+ (square-y square) (array-dimension *garden* 1))))
+
+(defun wrap-to-down (square)
+  (make-square :x (square-x square)
+               :y (- (square-y square) (array-dimension *garden* 1))))
+
+(defun explore-entry-points ()
+  (let* ((start-tile-entry (start-square))
+         (start-tile-left-exit (nearest-square start-tile-entry (left-edge-bounds)))
+         (left-tile-entry (wrap-to-left (second start-tile-left-exit)))
+         (left-tile-left-exit (nearest-square left-tile-entry (left-edge-bounds)))
+         (left-left-tile-entry (wrap-to-left (second left-tile-left-exit)))
+         (left-left-tile-left-exit (nearest-square left-left-tile-entry (left-edge-bounds))))
+    (print start-tile-entry) ; 65, 65
+    (print start-tile-left-exit) ; distance 65 to 0, 65
+    (print left-tile-entry) ; 131, 65
+    (print left-tile-left-exit) ; distance +131 to 0, 65
+    (print left-left-tile-entry) ; 131, 65
+    (print left-left-tile-left-exit))) ; distance +131 to 0, 65. repeats!
+
+; i didn't expect costs of 131, but looking closer at the input, it's not just that the
+; edge squares are empty, but so is the entire row and column containing the start point,
+; the center. that means we know for certain that the shortest distance from the entry
+; point of any tile to any other tile heading away from the starting point is just a
+; straight line to the tile edge.
+
+; we also know for certain that the cost of that wrap is exactly 131, except for the
+; center tile, where it is 65.
+
+; how many non-start tiles will we reach in any cardinal direction?
+; (/ (- 26501365 65) 131) = exactly 202300.
+; let's use a smaller target for intuition.
+; (+ 65 (* 202300 131)) => (+ 65 (* 1 131)) = 196.
+; if our target was 196 steps, we would need to step through the entire starting tile,
+; plus the adjacent cardinal tiles. where could we stop?
+
+(defun explore-maximum-distances-in-tiles ()
+  (let* ((start-tile-entry (start-square))
+         (start-tile-maximum-value (farthest-square start-tile-entry (whole-bounds)))
+         (start-tile-left-exit (nearest-square start-tile-entry (left-edge-bounds)))
+         (left-tile-entry (wrap-to-left (second start-tile-left-exit)))
+         (left-tile-maximum-value (farthest-square left-tile-entry (whole-bounds)))
+         (left-tile-up-exit (nearest-square left-tile-entry (up-edge-bounds)))
+         (left-up-tile-entry (wrap-to-up (second left-tile-up-exit)))
+         (left-up-tile-maximum-value (farthest-square left-up-tile-entry (whole-bounds)))
+         )
+    (print start-tile-entry)
+    (print start-tile-maximum-value) ; distance 130 to any corner
+    (print start-tile-left-exit) ; distance 65 to center left
+    (print left-tile-entry) ; center, off the right edge
+    (print left-tile-maximum-value) ; distance +196 to the upper or lower left corners
+    (print left-tile-up-exit) ; 66, in the upper right corner
+    (print left-up-tile-entry) ; lower right, off the lower edge
+    (print left-up-tile-maximum-value))) ; distance +261 to the upper left corner
+
+; then, the starting tile contains distances 0 <= d < 131.
+; an adjacent cardinal tile contains distances 65 < d <= 196, or 0 < (d - 65) <= 131.
+; the nearest diagonal tiles contain distances 131 < d <= 261, or 0 < (d - 131) <= 130.
+; the starting tile can be counted as internal.
+; the cardinal tile can be counted as a corner, where the boundary enters from the bottom
+; edge and exits the top edge, without pushing past either of the other edges.
+; the diagonal tile can be counted as a side, where the boundary enters from one edge
+; and leaves by the adjacent edge, also without touching the other two.
+; due to this pattern where the boundary only touches the tip of the cardinal tiles
+; and otherwise splits boundary tile edges down the middle, every other tile is
+; fully internal, no matter how many multiples of 131 the target factors in.
+
+; also, we can define these nine tiles, count their values based on 196, and
+; multiply them based on how many of their type exist within range of the target.
+
+; let's define the target distance again as:
+; tile-wrap-count = 202300, or 1
+; target-distance = (+ 65 (* tile-wrap-count 131))
+
+; so in the general case we can sum
+; each of the four cardinal tiles once,
+; each of four diagonal tiles times tile-wrap-count,
+; and the internal tile times, what…
+; when tile-wrap-count is 1, there is 1, the center.
+; when tile-wrap-count is 2, there are 5 counting the immediate cardinals.
+
+; oh, but there is a new class of side tile, those where the boundary enters and exits
+; the two far sides rather than the two near sides. we need to count those differently.
+
+; for each cardinal direction there is always 1 corner tile.
+; for each diagonal direction there are tile-wrap-count outer side tiles. (fewer hits)
+; for each diagonal direction there are (1- tile-wrap-count) inner side tiles. (more hits)
+; the number of internal tiles is 1 for the starting tile, plus a sequence sum.
+; the sequence is that in each of four directions there's 1, then a stairstep of 1+2,
+; then a stairstep of 1+2+3 and so on. if we pair up two directions worth of stairstep,
+; the sequence sum for the pair is 0*1, then 1*2, then 2*3 and so on.
+; so with the starting square and two pairs of stairsteps, the number of internal tiles
+; is (1+ (* 2 tile-wrap-count (1- tile-wrap-count))).
+
+; oh, let's double check one thing. for two adjacent internal tiles,
+; since we are only counting the even steps, the distance difference between them
+; is odd, isn't it? yeah, we proved that it's always 131 from entry point to entry point.
+; this shouldn't affect the repeating side tiles of either kind, because they are
+; diagonally adjacent, nor the corner tiles because they're unique. but we really have
+; two kinds of internal nodes, the evens and the odds. we need to count them separately.
+
+; we should also stop using (+ 65 131) as a test value. it doesn't predict the same edge
+; as adding an even number of wraps, so let's use (+ 65 131 131) = 327 instead.
+
+; diagramming for myself, i find that the even internal tiles is described by the sequence:
+; when tile-wrap-count is 2, there is 1, the center, or 1^2.
+; when tile-wrap-count is 4, there are another 4 times 2, a total of 9, or 3^2.
+; when tile-wrap-count is 6, there are another 4 times 4, a total of 25, or 5^2.
+; when tile-wrap-count is 8, there are another 4 times 6, a total of 49, or 7^2.
+; so the number of even internal tiles is explicitly the square of tile-wrap-count - 1.
+
+; the number of odd internal tiles is described by the sequnece:
+; when tile-wrap-count is 2, there are 4 times 1, a total of 4, or 2^2.
+; when tile-wrap-count is 4, there are another 4 times 3, a total of 16, or 4^2.
+; when tile-wrap-count is 6, there are another 4 times 5, a total of 36, or 6^2.
+; so the number of odd internal tiles is explicitly the square of tile-wrap-count.
+
+(defun tile-type-counts (target-distance)
+  (let* ((tile-wrap-count (/ (- target-distance 65) 131))
+         (corner-tile-count-per-direction 1)
+         (outer-side-tile-count-per-direction tile-wrap-count) 
+         (inner-side-tile-count-per-direction (1- tile-wrap-count)) 
+         (even-internal-count (* (1- tile-wrap-count) (1- tile-wrap-count)))
+         (odd-internal-count (* tile-wrap-count tile-wrap-count)))
+    (list corner-tile-count-per-direction
+          outer-side-tile-count-per-direction
+          inner-side-tile-count-per-direction
+          even-internal-count
+          odd-internal-count
+          (= (+ even-internal-count odd-internal-count)
+             (1+ (* 2 tile-wrap-count (1- tile-wrap-count)))))))
+
+(tile-type-counts (+ 65 (* 2 131)))
+(tile-type-counts (+ 65 (* 4 131)))
+(tile-type-counts (+ 65 (* 6 131)))
+(tile-type-counts 26501365)
+
+(defun problem2-target-distance () 26501365)
+
+(defun substitute-target-distance () (+ 65 (* 2 131)))
+
+; looks good. now let's find, for tile-wrap-count 2, the counts for each distinct type.
+(defun end-steps-in-even-internal-tile ()
+  (end-steps-in-tile (substitute-target-distance) (start-square)))
+
+; verified this is the same as the even internal tile for distance + 1:
+(defun end-steps-in-odd-internal-tile ()
+  (let* ((distance-and-entry-point (nearest-square (start-square) (left-edge-bounds)))
+         (entry-distance (first distance-and-entry-point))
+         (entry-point (wrap-to-left (second distance-and-entry-point))))
+    (end-steps-in-tile (- (substitute-target-distance) entry-distance)
+                       entry-point)))
 
