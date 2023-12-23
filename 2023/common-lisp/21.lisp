@@ -25,9 +25,6 @@
 
 (defparameter *garden* (lines->array (file->lines "21.txt")))
 
-(defparameter *distance-field* (make-array (array-dimensions *garden*)
-                                           :initial-element nil))
-
 ;;; Formatting
 
 (defun print-garden (garden)
@@ -49,8 +46,6 @@
                  do (print-number-cell (aref distance-field x y)))
         do (terpri)))
 
-(print-distance-field *distance-field*)
-
 ;;; Problem 1
 
 (defstruct square x y)
@@ -71,20 +66,20 @@
          (>= y 0)
          (< y (array-dimension *garden* 1)))))
 
-(defun garden-square-empty-p (square)
+(defun garden-square-walkable-p (square)
   (let ((x (square-x square))
         (y (square-y square)))
-    (eq (aref *garden* x y) #\.)))
+    (char/= (aref *garden* x y) #\#)))
 
-(defun distance-field-square-unmarked-p (square)
+(defun distance-field-square-unmarked-p (square distance-field)
   (let ((x (square-x square))
         (y (square-y square)))
-    (null (aref *distance-field* x y))))
+    (null (aref distance-field x y))))
 
-(defun mark-square (square distance)
+(defun mark-square (square distance distance-field)
   (let ((x (square-x square))
         (y (square-y square)))
-    (setf (aref *distance-field* x y) distance)))
+    (setf (aref distance-field x y) distance)))
 
 ; find the square with the S.
 ; in the distance field, mark it with 0.
@@ -102,17 +97,24 @@
 ;   recurse with the list of squares at N to mark N+1.
 ; in this way, populate the whole distance field with distances from N.
 
-(defun fill-distance-field (distance squares-at-prior-distance)
+(defun fill-distance-field (distance-field distance squares-at-prior-distance)
   (let ((squares-at-distance nil))
     (loop for square in squares-at-prior-distance
           do (loop for adjacent-square in (adjacent-squares square)
                    do (when (and (square-in-bounds-p adjacent-square)
-                                 (garden-square-empty-p adjacent-square)
-                                 (distance-field-square-unmarked-p adjacent-square))
-                        (mark-square adjacent-square distance)
+                                 (garden-square-walkable-p adjacent-square)
+                                 (distance-field-square-unmarked-p adjacent-square
+                                                                   distance-field))
+                        (mark-square adjacent-square distance distance-field)
                         (push adjacent-square squares-at-distance))))
     (unless (null squares-at-distance)
-      (fill-distance-field (1+ distance) squares-at-distance))))
+      (fill-distance-field distance-field (1+ distance) squares-at-distance))))
+
+(defun make-distance-field (entry-square)
+  (let ((distance-field (make-array (array-dimensions *garden*) :initial-element nil)))
+    (mark-square entry-square 0 distance-field)
+    (fill-distance-field distance-field 1 (list entry-square))
+    distance-field))
 
 (defun start-square ()
   (loop for x from 0 below (array-dimension *garden* 0)
@@ -120,22 +122,20 @@
                  do (when (eq (aref *garden* x y) #\S)
                       (return-from start-square (make-square :x x :y y))))))
 
-(defun distance-field-count-if (predicate)
-  (loop for x from 0 below (array-dimension *distance-field* 0)
-        sum (loop for y from 0 below (array-dimension *distance-field* 1)
-                  count (funcall predicate (aref *distance-field* x y)))))
+(defun distance-field-count-if (predicate distance-field)
+  (loop for x from 0 below (array-dimension distance-field 0)
+        sum (loop for y from 0 below (array-dimension distance-field 1)
+                  count (funcall predicate (aref distance-field x y)))))
 
 (defun problem1 ()
-  (let ((*distance-field* (make-array (array-dimensions *garden*) :initial-element nil))
-        (start-square (start-square))
+  (let ((distance-field (make-distance-field (start-square)))
         (target-distance 64))
-    (mark-square start-square 0)
-    (fill-distance-field 1 (list start-square))
     ; (print-distance-field *distance-field*)
     (distance-field-count-if #'(lambda (distance)
                                  (and distance
                                       (evenp (- target-distance distance))
-                                      (<= distance target-distance))))))
+                                      (<= distance target-distance)))
+                             distance-field)))
 
 (print (problem1))
 
