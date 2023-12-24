@@ -151,7 +151,7 @@
                  (return-from safe-to-remove-brick-p nil))))
     t))
 
-(defun count-safe-to-remove-bricks ()
+(defun problem1 ()
   (multiple-value-bind
     (settled-bricks supported-index-by-index supporting-index-by-index)
     (make-settled-bricks)
@@ -160,28 +160,53 @@
                                         supported-index-by-index
                                         supporting-index-by-index))))
 
-(defun problem1 ()
-  (count-safe-to-remove-bricks))
-
 (print (problem1))
 
-; a brick supports another when its upper bound z equals the other's
-; offset and their x, y rects intersect.
+;;; Problem 2
 
-; (defun ranges-intersect (min-a length-a min-b length-b)
-;   (or (and (<= min-a min-b)
-;            (< min-b (+ min-a length-a)))
-;       (and (<= min-b min-a)
-;            (< min-a (+ min-b length-b)))))
+; now the goal is to find how many bricks would fall if i removed each brick.
+; i think that means, for a given brick i need to track it as speculatively removed,
+; then enqueue all those it supports which have no support other than those that are
+; speculatively removed.
 
-; (defun brick-supports-p (brick other-brick)
-;   (and (= (+ (v3-z (brick-offset brick)) (v3-z (brick-size brick)))
-;           (v3-z (brick-offset other-brick)))
-;        (ranges-intersect (v3-x (brick-offset brick))
-;                          (v3-x (brick-size brick))
-;                          (v3-x (brick-offset other-brick))
-;                          (v3-x (brick-size other-brick)))
-;        (ranges-intersect (v3-y (brick-offset brick))
-;                          (v3-y (brick-size brick))
-;                          (v3-y (brick-offset other-brick))
-;                          (v3-y (brick-size other-brick)))))
+(defun count-of-bricks-caused-to-fall (initial-brick-index
+                                        supported-index-by-index
+                                        supporting-index-by-index)
+  (let ((removed-brick-index-list (make-array (length *bricks-aloft*)
+                                              :fill-pointer 0))
+        (removed-brick-index-hash (make-hash-table)))
+    (vector-push-extend initial-brick-index removed-brick-index-list)
+    (setf (gethash initial-brick-index removed-brick-index-hash) t)
+    (loop for queue-index from 0
+          while (< queue-index (length removed-brick-index-list))
+          ; do (print (list "brick index" (aref removed-brick-index-list queue-index)))
+          do (loop for supported-index in (gethash (aref removed-brick-index-list
+                                                         queue-index)
+                                                   supported-index-by-index)
+                   ; do (print (list "supported index" supported-index))
+                   do (let ((remaining-supports 
+                              (remove-if #'(lambda (index)
+                                             (gethash index removed-brick-index-hash))
+                                         (gethash supported-index
+                                                  supporting-index-by-index))))
+                        ; (print (list "remaining supports" remaining-supports))
+                        (when (and (null remaining-supports)
+                                   (not (gethash supported-index
+                                                 removed-brick-index-hash)))
+                          (vector-push-extend supported-index removed-brick-index-list)
+                          (setf (gethash supported-index removed-brick-index-hash) t)))))
+    ; (print (length removed-brick-index-list))
+    (1- (length removed-brick-index-list))))
+
+(defun problem2 ()
+  (multiple-value-bind
+    (settled-bricks supported-index-by-index supporting-index-by-index)
+    (make-settled-bricks)
+    (loop for brick-index from 0 below (length settled-bricks)
+          ; do (terpri) 
+          ; do (print (list "trial index" brick-index)) 
+          sum (count-of-bricks-caused-to-fall brick-index
+                                              supported-index-by-index
+                                              supporting-index-by-index))))
+
+(print (problem2))
