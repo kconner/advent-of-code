@@ -46,7 +46,7 @@
 
 (defparameter *bricks-aloft*
   (sort (mapcar #'line->brick
-                (file->lines "22.test.txt"))
+                (file->lines "22.txt"))
         #'< :key (lambda (b) (v3-z (brick-offset b)))))
 
 (defparameter *dimensions*
@@ -62,68 +62,126 @@
   
 ;;; Problem 1
 
-; the goal is to find the number of bricks that can be disintegrated safely.
-
-; a brick can be disintegrated safely (without causing others to fall)
-; unless a brick it supports is supported by no other bricks.
-
-; due to the shape and alignment of bricks, if A supports B and B supports C,
-; A cannot reach C to directly support it. so transitive support is not important.
-
-; a brick supports another when its upper bound z equals the other's
-; offset and their x, y rects intersect. it looks like the horizontal dimensions are
-; 10x10, and the vertical dimension is in the hundreds.
-
-; now, how to settle the bricks? i think you could sort them by lower z and then
+; how to settle the bricks? i think you could sort them by lower z and then
 ; insert one at a time, placing them as low as they will go.
 
 ; we could begin with a 10x10 grid of references to the topmost brick placed
 ; in that column, initially all blank.
 
-; to insert a brick, use topmost-brick-index to find the topmost bricks
-; in each column of the brick's x, y range. among those, determine the maximum
-; upper bound z value, or 1 if there are none.
+; to insert a brick, collect the topmost bricks in each column of the brick's x, y range.
+; among those, determine the maximum upper bound z value, or 1 if there are none.
 ; then make a copy of the brick with the z offset set to sit atop that height.
 ; finally reference the newly inserted brick with the x, y range of the inserted brick.
 
-(defun insert-settled-brick (brick settled-bricks topmost-brick-index)
+(defun insert-settled-brick
+  (brick
+    settled-bricks
+    topmost-brick-index-grid
+    supported-index-by-index
+    supporting-index-by-index)
   (let ((upper-bound (brick-upper-bound brick))
-        (supporting-bricks nil))
-    (print (list "brick, aloft" brick))
+        (supporting-bricks-index-list nil)
+        (brick-index (length settled-bricks)))
+    ; (print (list "brick, aloft" brick))
     (loop for x from (v3-x (brick-offset brick)) below (v3-x upper-bound)
           do (loop for y from (v3-y (brick-offset brick)) below (v3-y upper-bound)
-                   do (let ((topmost-brick (aref topmost-brick-index x y)))
-                        (when topmost-brick
-                          (pushnew topmost-brick supporting-bricks)))))
-    (print (list "bricks beneath" supporting-bricks))
-    (let ((max-supporting-z (reduce #'max (mapcar #'(lambda (b)
-                                                      (v3-z (brick-upper-bound b)))
-                                                  supporting-bricks)
-                                    :initial-value 1)))
-      (print (list "max z" max-supporting-z))
-      (setf supporting-bricks
-            (remove-if-not #'(lambda (b)
-                               (= (v3-z (brick-upper-bound b)) max-supporting-z))
-                           supporting-bricks))
-      (print (list "immediate supporting bricks" supporting-bricks))
+                   do (let ((index (aref topmost-brick-index-grid x y)))
+                        (when index
+                          (pushnew index supporting-bricks-index-list)))))
+    ; (print (list "bricks beneath" supporting-bricks-index-list))
+    (let ((max-supporting-z
+            (reduce #'max
+                    (mapcar #'(lambda (index)
+                                (v3-z (brick-upper-bound (aref settled-bricks index))))
+                            supporting-bricks-index-list)
+                    :initial-value 1)))
+      ; (print (list "max z" max-supporting-z))
+      (setf supporting-bricks-index-list
+            (remove-if-not #'(lambda (index)
+                               (= (v3-z (brick-upper-bound (aref settled-bricks index)))
+                                  max-supporting-z))
+                           supporting-bricks-index-list))
+      ; (print (list "immediate supporting bricks" supporting-bricks-index-list))
       (let ((settled-brick (copy-brick-with-offset-z brick max-supporting-z)))
-        (print (list "settled brick" settled-brick))
+        ; (print (list "settled brick" settled-brick))
         (vector-push-extend settled-brick settled-bricks)
         (loop for x from (v3-x (brick-offset brick)) below (v3-x upper-bound)
               do (loop for y from (v3-y (brick-offset brick)) below (v3-y upper-bound)
-                       do (setf (aref topmost-brick-index x y) settled-brick)))))))
+                       do (setf (aref topmost-brick-index-grid x y) brick-index))))
+      (setf (gethash brick-index supporting-index-by-index)
+            supporting-bricks-index-list)
+      (loop for supporting-brick-index in supporting-bricks-index-list
+            do (push brick-index (gethash supporting-brick-index
+                                          supported-index-by-index))))))
 
 (defun make-settled-bricks ()
   (let ((settled-bricks (make-array (length *bricks-aloft*)
                                     :fill-pointer 0))
-        (topmost-brick-index (make-array (list (v3-x *dimensions*)
+        (topmost-brick-index-grid (make-array (list (v3-x *dimensions*)
                                                (v3-y *dimensions*))
-                                         :initial-element nil)))
+                                         :initial-element nil))
+        (supported-index-by-index (make-hash-table :size (length *bricks-aloft*)))
+        (supporting-index-by-index (make-hash-table :size (length *bricks-aloft*))))
     (loop for brick in *bricks-aloft*
-          do (insert-settled-brick brick settled-bricks topmost-brick-index)
-          do (terpri)
-          )
-    settled-bricks))
+          do (insert-settled-brick brick
+                                   settled-bricks
+                                   topmost-brick-index-grid
+                                   supported-index-by-index
+                                   supporting-index-by-index))
+    (values settled-bricks
+            supported-index-by-index
+            supporting-index-by-index)))
 
-(make-settled-bricks)
+; the goal is to find the number of bricks that can be disintegrated safely.
 
+; horizontal dimensions are 10x10, and the vertical dimension is in the hundreds.
+; there are 1,388 bricks.
+
+; a brick can be removed safely (without causing others to fall)
+; unless a brick it supports is supported by no other bricks.
+
+(defun safe-to-remove-brick-p (brick-index
+                                supported-index-by-index
+                                supporting-index-by-index)
+  (let ((supported-index-list (gethash brick-index supported-index-by-index)))
+    (loop for supported-index in supported-index-list
+          do (let ((supporting-index-list (gethash supported-index
+                                                   supporting-index-by-index)))
+               (when (= (length supporting-index-list) 1)
+                 (return-from safe-to-remove-brick-p nil))))
+    t))
+
+(defun count-safe-to-remove-bricks ()
+  (multiple-value-bind
+    (settled-bricks supported-index-by-index supporting-index-by-index)
+    (make-settled-bricks)
+    (loop for brick-index from 0 below (length settled-bricks)
+          count (safe-to-remove-brick-p brick-index
+                                        supported-index-by-index
+                                        supporting-index-by-index))))
+
+(defun problem1 ()
+  (count-safe-to-remove-bricks))
+
+(print (problem1))
+
+; a brick supports another when its upper bound z equals the other's
+; offset and their x, y rects intersect.
+
+; (defun ranges-intersect (min-a length-a min-b length-b)
+;   (or (and (<= min-a min-b)
+;            (< min-b (+ min-a length-a)))
+;       (and (<= min-b min-a)
+;            (< min-a (+ min-b length-b)))))
+
+; (defun brick-supports-p (brick other-brick)
+;   (and (= (+ (v3-z (brick-offset brick)) (v3-z (brick-size brick)))
+;           (v3-z (brick-offset other-brick)))
+;        (ranges-intersect (v3-x (brick-offset brick))
+;                          (v3-x (brick-size brick))
+;                          (v3-x (brick-offset other-brick))
+;                          (v3-x (brick-size other-brick)))
+;        (ranges-intersect (v3-y (brick-offset brick))
+;                          (v3-y (brick-size brick))
+;                          (v3-y (brick-offset other-brick))
+;                          (v3-y (brick-size other-brick)))))
