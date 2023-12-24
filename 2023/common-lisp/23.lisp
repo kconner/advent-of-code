@@ -6,6 +6,12 @@
 ; > v < ^ are each part of a path and indicate one-way travel in the direction they point.
 (defparameter *map* nil)
 
+(defun print-map (map)
+  (loop for y from 0 below (array-dimension map 1)
+        do (loop for x from 0 below (array-dimension map 0)
+                 do (princ (aref map x y)))
+        do (terpri)))
+
 ; a direction-char is one of the characters: > v < ^
 (defun direction-char-reverse (direction-char)
   (case direction-char
@@ -19,21 +25,22 @@
   (x nil :type fixnum)
   (y nil :type fixnum))
 
+(defun square->string (square)
+  (format nil "~a,~a" (square-x square) (square-y square)))
+
+(defun square-char (square)
+  (aref *map* (square-x square) (square-y square)))
+
 (defun square-in-bounds-p (square)
   (let ((x (square-x square))
         (y (square-y square)))
     (and (<= 0 x) (< x (array-dimension *map* 0))
          (<= 0 y) (< y (array-dimension *map* 1)))))
 
-; a square is enterable from a direction if it is in bounds
-; and is either a . or a one-way path in the given direction.
-(defun square-enterable-from-direction-p (square direction-char)
+; a square is walkable if it is in bounds and is not a #.
+(defun square-walkable-p (square)
   (and (square-in-bounds-p square)
-       (let* ((x (square-x square))
-              (y (square-y square))
-              (square-char (aref *map* x y)))
-         (or (eq square-char #\.)
-             (eq square-char direction-char)))))
+       (char/= (square-char square) #\#)))
 
 (defun adjacent-square (square direction-char)
   (let ((x (square-x square))
@@ -71,6 +78,18 @@
   (aref (graph-nodes graph)
         (gethash square (graph-index-by-square graph))))
 
+(defun print-graph-as-mermaid (graph)
+  (format t "flowchart LR;~%")
+  (loop for node across (graph-nodes graph)
+        do (let ((node-string (square->string (node-square node))))
+             (format t "~a~%" node-string)
+             (loop for edge in (node-edges node)
+                   do (format t
+                              "~a --~a--> ~a~%"
+                              node-string
+                              (edge-value edge)
+                              (square->string (edge-end-square edge)))))))
+
 ;;; Parsing
 
 (defun transpose (lists)
@@ -89,7 +108,9 @@
     (make-array (list width height)
                 :initial-contents lines)))
 
-(setf *map* (lines->array (file->lines "23.test.txt")))
+(setf *map* (lines->array (file->lines "23.txt")))
+
+(print-map *map*)
 
 ;;; Problem 1
 
@@ -106,29 +127,40 @@
 (defun exit-square ()
   (empty-square-in-row (- (array-dimension *map* 1) 1)))
 
-(defun enterable-adjacent-squares-and-directions (square prior-direction-char)
+; to find the edges from a square, for four directions:
+; if the square is walkable, perform a search for an end square in that direction.
+; during the search, stop and return no edge if stepping on a reverse one-way travel square.
+; consider walkable squares in all directions except the reverse.
+; when there is one option, continue the path search.
+; otherwise, stop and return an edge. record the number of steps as the edge value.
+
+(defun walkable-adjacent-squares-and-directions (square prior-direction-char)
   (loop for direction-char in (remove (direction-char-reverse prior-direction-char)
                                       '(#\> #\v #\< #\^))
         for adjacent-square = (adjacent-square square direction-char)
-        when (square-enterable-from-direction-p adjacent-square direction-char)
+        when (square-walkable-p adjacent-square)
         collect (list adjacent-square direction-char)))
 
 (defun find-edge-end (value square direction-char)
-  (let ((next-steps (enterable-adjacent-squares-and-directions square direction-char)))
-    (if (/= 1 (length next-steps))
-        (make-edge :value value :end-square square)
-        (let* ((next-step (first next-steps))
-               (next-square (first next-step))
-               (next-direction-char (second next-step)))
-          (find-edge-end (1+ value) next-square next-direction-char)))))
+  (if (char= (square-char square) (direction-char-reverse direction-char))
+      nil
+      (let ((next-steps (walkable-adjacent-squares-and-directions square direction-char)))
+        (if (/= 1 (length next-steps))
+            (make-edge :value value :end-square square)
+            (let* ((next-step (first next-steps))
+                   (next-square (first next-step))
+                   (next-direction-char (second next-step)))
+                (find-edge-end (1+ value) next-square next-direction-char))))))
 
 (defun edges-from-square (square)
   (loop for (adjacent-square direction-char)
-        in (enterable-adjacent-squares-and-directions square nil)
-        collect (find-edge-end 1 adjacent-square direction-char)))
+        in (walkable-adjacent-squares-and-directions square nil)
+        for edge = (find-edge-end 1 adjacent-square direction-char)
+        when edge
+        collect edge))
 
 ; starting by treating the entry point as a node, create the graph by attempting
-; to walk all paths from all encountered nodes.
+; to walk all paths from all encountered nodes once each.
 (defun make-filled-graph ()
   (let ((graph (make-graph))
         (node-square-queue
@@ -137,35 +169,39 @@
     (loop for i from 0
           while (< i (length node-square-queue))
           for square = (aref node-square-queue i)
-          do (print (list "make filled graph" i square))
           unless (graph-has-node-at-square-p graph square)
           do (let ((edges (edges-from-square square)))
-               (print (list "edges from square" edges))
                (graph-add-node graph (make-node :square square :edges edges))
                (loop for end-square in (mapcar #'edge-end-square edges)
                      unless (graph-has-node-at-square-p graph end-square)
                      do (vector-push-extend end-square node-square-queue))))
     graph))
 
-; to find the edges from a square, for four directions:
-; if the square is enterable, perform a search for an end square in that direction.
+(print-graph-as-mermaid (make-filled-graph))
 
-; A node is a non-wall square that has adjacent non-wall squares numbering other than 2.
+; ok, in mermaid rendering i can see the graph is acyclic, and except for two long arcs
+; going around the corners, each node's children are on the immediate next depth level,
+; so it's almost perfectly stratified. it's also symmetric in the start-to-end direction
+; and across it, so it doesn't matter which end you search from. it does not pinch and
+; create subgraphs and there are no irrelevant paths to prune. there are something like
+; 2^10 paths so let's walk them all and take the max.
 
-; If a slope against is detected in a direction other than the direction of travel, bail on that path.
+; find the longest path by DFS. accumulate the edge value sum. when recursing to children,
+; take the maximum of their result. avoid memoizing unless it turns out to be slow.
+(defun longest-path (graph node)
+  (let ((edges (node-edges node)))
+    (if (null edges)
+        0
+        (apply #'max
+               (mapcar (lambda (edge)
+                         (+ (edge-value edge)
+                            (longest-path graph
+                                          (graph-node-at-square
+                                            graph (edge-end-square edge)))))
+                       (node-edges node))))))
 
-; If the directed walk of a path completes by finding a new or known node, create an edge. 
+(defun problem1 ()
+  (let ((graph (make-filled-graph)))
+    (longest-path graph (graph-node-at-square graph (entry-square)))))
 
-; Record the number of steps as the edge value. Don't repeat the work to search the immediate paths from a given node. 
-
-
-;;; Formatting
-
-(defun print-map (map)
-  (loop for y from 0 below (array-dimension map 1)
-        do (loop for x from 0 below (array-dimension map 0)
-                 do (princ (aref map x y)))
-        do (terpri)))
-
-(print-map *map*)
-
+(print (problem1))
