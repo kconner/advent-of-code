@@ -205,3 +205,68 @@
     (longest-path graph (graph-node-at-square graph (entry-square)))))
 
 (print (problem1))
+
+;;; Problem 2
+
+; i think the first thing i'll want to do is add reverse edges to all the nodes.
+(defun augment-with-reverse-edges (graph)
+  (loop for node across (graph-nodes graph)
+        do (loop for edge in (node-edges node)
+                 for reverse-edge = (make-edge :value (edge-value edge)
+                                               :end-square (node-square node))
+                 do (pushnew reverse-edge
+                             (node-edges (graph-node-at-square graph
+                                                               (edge-end-square edge)))
+                             :test #'equalp))))
+
+; there are 18 nodes with two exits for the entrace, and 16 with three exits.
+; that means a cap of 2^18 * 3^16 = unique paths to walk, or 11,284,439,629,824.
+; i'm not convinced that just aborting at visited nodes is enough, but let's start there.
+
+; naively, find the longest path that doesn't visit the same node twice, again by DFS.
+; keep a hash of visited nodes to prevent repeated work. accumulate the edge value sum.
+; when recursing to children, take the maximum of their result.
+
+(defun longest-path-without-revisiting (graph exit-index visited-index-list node-index)
+  (cond
+    ((gethash node-index visited-index-list) nil)
+    ((= node-index exit-index) 0)
+    (:else
+      (setf (gethash node-index visited-index-list) t)
+      (let* ((node (aref (graph-nodes graph) node-index))
+             (edges (node-edges node))
+             (result (reduce
+                       (lambda (acc edge)
+                         (let ((edge-result
+                                 (longest-path-without-revisiting
+                                   graph
+                                   exit-index
+                                   visited-index-list
+                                   (gethash (edge-end-square edge)
+                                            (graph-index-by-square graph)))))
+                           (if (null edge-result)
+                               acc
+                               (let ((edge-sum (+ (edge-value edge)
+                                                  edge-result)))
+                                 (if (null acc)
+                                     edge-sum
+                                     (max acc edge-sum))))))
+                       edges
+                       :initial-value nil)))
+        (setf (gethash node-index visited-index-list) nil)
+        result))))
+
+(defun problem2 ()
+  (let* ((graph (make-filled-graph))
+         (entry-index (gethash (entry-square) (graph-index-by-square graph)))
+         (exit-index (gethash (exit-square) (graph-index-by-square graph))))
+    (augment-with-reverse-edges graph)
+    (longest-path-without-revisiting
+      graph
+      exit-index
+      (make-hash-table :test #'equalp)
+      entry-index)))
+
+(print (problem2))
+
+; that was fast enough.
