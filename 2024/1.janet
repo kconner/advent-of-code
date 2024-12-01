@@ -13,44 +13,44 @@
 
 (defn numbers-in-line [text]
   (->> text
-    (peg/match line-grammar)
-    (map scan-number)))
+       (peg/match line-grammar)
+       (map scan-number)))
 
 (defn lists-from-file [path]
   (->> path
-    (slurp)
-    (string/split "\n")
-    (filter not-empty?)
-    (map numbers-in-line)
-    (apply map array)))
+       (slurp)
+       (string/split "\n")
+       (filter not-empty?)
+       (map numbers-in-line)
+       (apply map array)))
 
 # problem 1
 
 (defn problem1 [path]
   (->> path
-    (lists-from-file)
-    (map sort)
-    (apply map -)
-    (map math/abs)
-    (apply +)))
+       (lists-from-file)
+       (map sort)
+       (apply map -)
+       (map math/abs)
+       (apply +)))
 
 # problem 2
 
 (defn kinda-like-a-dot-product [freqs1 freqs2]
   (->> freqs1
-    (keys)
-    (map
-      (fn [k]
-        (* k
-           (get freqs1 k)
-           (get freqs2 k 0))))
-    (apply +)))
+       (keys)
+       (map
+         (fn [k]
+           (* k
+              (get freqs1 k)
+              (get freqs2 k 0))))
+       (apply +)))
 
 (defn problem2 [path]
   (->> path
-    (lists-from-file)
-    (map frequencies)
-    (apply kinda-like-a-dot-product)))
+       (lists-from-file)
+       (map frequencies)
+       (apply kinda-like-a-dot-product)))
 
 # main 
 
