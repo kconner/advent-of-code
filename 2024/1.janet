@@ -19,22 +19,47 @@
     (peg/match line-grammar)
     (map scan-number)))
 
-(def input-path "1.txt")
-
-# problem 1
-
-(defn problem1 []
-  (->> input-path
+(defn lists-from-file [path]
+  (->> path
     (slurp)
     (string/split "\n")
     (filter not-empty?)
     (map numbers-in-line)
-    (apply map array)
+    (apply map array)))
+
+# problem 1
+
+(defn problem1 [path]
+  (->> path
+    (lists-from-file)
     (map sort)
     (apply map -)
     (map math/abs)
     (apply +)))
-    
-(print (problem1))
 
 # problem 2
+
+(defn kinda-like-a-dot-product [freqs1 freqs2]
+  (->> freqs1
+    (keys)
+    (map
+      (fn [k]
+        (* k
+          (get freqs1 k)
+          (get freqs2 k 0))))
+    (apply +)
+  )
+)
+
+(defn problem2 [path]
+  (->> path
+    (lists-from-file)
+    (map frequencies)
+    (apply kinda-like-a-dot-product)))
+
+# main 
+
+# (def input-path "1.test.txt")
+(def input-path "1.txt")
+(print (problem1 input-path))
+(print (problem2 input-path))
