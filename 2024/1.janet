@@ -1,7 +1,4 @@
-# utility
-
-(defn not-empty? [s]
-  (not (empty? s)))
+(import ./tools :only [lines-from-file])
 
 # parsing
 
@@ -11,17 +8,10 @@
     (peg/compile ~(* ,location-id ,spaces ,location-id))))
 
 (defn numbers-in-line [text]
-  (->> text
-       (peg/match line-grammar)
-       (map scan-number)))
+  (map scan-number (peg/match line-grammar text)))
 
 (defn lists-from-file [path]
-  (->> path
-       (slurp)
-       (string/split "\n")
-       (filter not-empty?)
-       (map numbers-in-line)
-       (apply map array)))
+  (map array ;(map numbers-in-line (tools/lines-from-file path))))
 
 # problem 1
 
