@@ -54,7 +54,8 @@
 
 # main 
 
-# (def input-path "1.test.txt")
-(def input-path "1.txt")
-(print (problem1 input-path))
-(print (problem2 input-path))
+(defn main [&]
+  # (def input-path "1.test.txt")
+  (def input-path "1.txt")
+  (print (problem1 input-path))
+  (print (problem2 input-path)))

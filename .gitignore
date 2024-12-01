@@ -3,3 +3,5 @@ xcuserdata
 .clj-kondo
 .lsp
 .calva
+/2024/build
+*.jimage
