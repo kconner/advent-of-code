@@ -32,16 +32,23 @@
   (y nil :type number)
   (z nil :type number))
 
-(defun v3->v2 (v)
+(defun v3->xy-v2 (v)
   (make-v2 :x (v3-x v) :y (v3-y v)))
+
+(defun v3->yz-v2 (v)
+  (make-v2 :x (v3-y v) :y (v3-z v)))
 
 (defstruct ray3
   (pos nil :type v3)
   (vel nil :type v3))
 
-(defun ray3->ray2 (r)
-  (make-ray2 :pos (v3->v2 (ray3-pos r))
-             :vel (v3->v2 (ray3-vel r))))
+(defun ray3->xy-ray2 (r)
+  (make-ray2 :pos (v3->xy-v2 (ray3-pos r))
+             :vel (v3->xy-v2 (ray3-vel r))))
+
+(defun ray3->yz-ray2 (r)
+  (make-ray2 :pos (v3->yz-v2 (ray3-pos r))
+             :vel (v3->yz-v2 (ray3-vel r))))
 
 ;;; Parsing
 
@@ -67,7 +74,7 @@
 
 (defparameter *ray3s* (mapcar #'line->ray3 (file->lines "24.txt")))
 
-(defparameter *ray2s* (mapcar #'ray3->ray2 *ray3s*))
+(defparameter *ray2s* (mapcar #'ray3->xy-ray2 *ray3s*))
 
 ;;; Problem 1
 
@@ -84,13 +91,13 @@
            (p3 (ray2-pos other)) (x3 (v2-x p3)) (y3 (v2-y p3))
            (p4 (v2-+ p3 (ray2-vel other))) (x4 (v2-x p4)) (y4 (v2-y p4))
            (interpolant (/ (- (* (- x1 x3) (- y3 y4))
-                                (* (- y1 y3) (- x3 x4)))
-                             (- (* (- x1 x2) (- y3 y4))
-                                (* (- y1 y2) (- x3 x4))))))
+                              (* (- y1 y3) (- x3 x4)))
+                           (- (* (- x1 x2) (- y3 y4))
+                              (* (- y1 y2) (- x3 x4))))))
       interpolant)
     (arithmetic-error () nil)))
 
-(defun rays-intersect-in-bounds-p (ray-a ray-b lower-bound upper-bound)
+(defun ray2s-intersect-in-bounds-p (ray-a ray-b lower-bound upper-bound)
   (let ((interpolant-a (ray2-intersection-interpolant ray-a ray-b))
         (interpolant-b (ray2-intersection-interpolant ray-b ray-a)))
     ; (print (list interpolant-a interpolant-b))
@@ -112,24 +119,53 @@
   (let ((lower-bound (make-v2 :x 200000000000000 :y 200000000000000))
         (upper-bound (make-v2 :x 400000000000000 :y 400000000000000)))
     (loop for (a b) in (2-combinations *ray2s*)
-          when (rays-intersect-in-bounds-p a b lower-bound upper-bound)
+          when (ray2s-intersect-in-bounds-p a b lower-bound upper-bound)
           count t)))
 
 (print (problem1))
 
 ;;; Problem 2
 
+; i have many rays in 3D and i need to find a particular point on a line that intersects
+; them all. it's a given that this line exists.
+
 ; first let's look for sets of parallel hailstones. for all combinations of rays,
 ; compare their velocities. if one is a multiple of the other, they are parallel,
 ; and may also be collinear.
+
 (defun v3-parallel-p (a b)
   (= (/ (v3-x a) (v3-x b))
      (/ (v3-y a) (v3-y b))
      (/ (v3-z a) (v3-z b))))
 
-(defun look-for-parallel-rays ()
+(defun look-for-parallel-ray3s ()
   (remove nil
           (loop for (a b) in (2-combinations *ray3s*)
                 collect (v3-parallel-p (ray3-vel a) (ray3-vel b)))))
 
-; there aren't any such pairs. too bad, that would have been sweet.
+; there aren't any such pairs. too bad, that would have been sweet. two parallel rays
+; would mean i know a particular plane my line has to be on, and two pairs would mean
+; i could isolate the line right away.
+
+; are there any ray pairs that intersect in 3D? we could tell that is the case
+; if they intersect in 2D with the same interpolant from multiple perspectives.
+
+(defun ray3s-intersect-p (ray-a ray-b)
+  (let ((interpolant-xy (ray2-intersection-interpolant (ray3->xy-ray2 ray-a)
+                                                       (ray3->xy-ray2 ray-b)))
+        (interpolant-yz (ray2-intersection-interpolant (ray3->yz-ray2 ray-a)
+                                                       (ray3->yz-ray2 ray-b))))
+    (and interpolant-xy
+         interpolant-yz
+         (= interpolant-xy interpolant-yz))))
+
+(defun look-for-intersecting-ray3s ()
+  (loop for (a b) in (2-combinations *ray3s*)
+        when (ray3s-intersect-p a b)
+        collect (list a b)))
+
+; no, there are none. that would have meant their intersection is a point i pass through.
+
+; there is a general solution to this for four lines, but i'm not equipped to read the
+; paper, and help sites are cagey about the details because nobody wants to help people
+; too much with their high level math homework.
