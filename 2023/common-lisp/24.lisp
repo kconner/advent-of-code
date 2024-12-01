@@ -116,3 +116,20 @@
           count t)))
 
 (print (problem1))
+
+;;; Problem 2
+
+; first let's look for sets of parallel hailstones. for all combinations of rays,
+; compare their velocities. if one is a multiple of the other, they are parallel,
+; and may also be collinear.
+(defun v3-parallel-p (a b)
+  (= (/ (v3-x a) (v3-x b))
+     (/ (v3-y a) (v3-y b))
+     (/ (v3-z a) (v3-z b))))
+
+(defun look-for-parallel-rays ()
+  (remove nil
+          (loop for (a b) in (2-combinations *ray3s*)
+                collect (v3-parallel-p (ray3-vel a) (ray3-vel b)))))
+
+; there aren't any such pairs. too bad, that would have been sweet.
