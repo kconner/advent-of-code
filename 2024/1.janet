@@ -6,9 +6,8 @@
 # parsing
 
 (def line-grammar
-  (do
-    (def location-id ~(capture (some (range "09"))))
-    (def spaces ~(some " "))
+  (let [location-id ~(capture (some (range "09")))
+        spaces ~(some " ")]
     (peg/compile ~(* ,location-id ,spaces ,location-id))))
 
 (defn numbers-in-line [text]
