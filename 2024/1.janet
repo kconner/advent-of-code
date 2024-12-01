@@ -7,12 +7,9 @@
 
 (def line-grammar
   (do
-    (def location-id ~(some (range "09")))
+    (def location-id ~(capture (some (range "09"))))
     (def spaces ~(some " "))
-    (def line ~(sequence (capture ,location-id)
-                        ,spaces
-                        (capture ,location-id)))
-    (peg/compile line)))
+    (peg/compile ~(* ,location-id ,spaces ,location-id))))
 
 (defn numbers-in-line [text]
   (->> text
@@ -45,11 +42,9 @@
     (map
       (fn [k]
         (* k
-          (get freqs1 k)
-          (get freqs2 k 0))))
-    (apply +)
-  )
-)
+           (get freqs1 k)
+           (get freqs2 k 0))))
+    (apply +)))
 
 (defn problem2 [path]
   (->> path
