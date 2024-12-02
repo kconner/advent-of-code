@@ -1,37 +1,25 @@
 (import ./tools :only [lines-from-file])
 
-# parsing
-
 (def line-grammar
   (let [id ~(capture (some (range "09")))
         spaces ~(some " ")]
     (peg/compile ~(* ,id ,spaces ,id))))
 
-(defn ids-in-line [line]
-  (map scan-number (peg/match line-grammar line)))
-
+# zip of list of number pairs parsed from lines of the file
 (defn lists-from-file [path]
-  (map array ;(map ids-in-line (tools/lines-from-file path))))
+  (map array ;(map |(map scan-number (peg/match line-grammar $))
+                   (tools/lines-from-file path))))
 
-# problem 1
-
-(defn difference [a b]
-  (math/abs (- a b)))
-
+# sum of absolute differences of pairs across sorted lists
 (defn problem1 [lists]
-  (+ ;(map difference ;(map sort lists))))
+  (+ ;(map |(math/abs (- $0 $1))
+           ;(map sort lists))))
 
-# problem 2
-
-(defn frequency-product-sum [freqs1 freqs2]
-  (defn frequency-product [k]
-    (* k (get freqs1 k) (get freqs2 k 0)))
-  (+ ;(map frequency-product (keys freqs1))))
-
+# sum of the products of ids with their frequencies in each list
 (defn problem2 [lists]
-  (frequency-product-sum ;(map frequencies lists)))
-
-# main
+  (let [[freqs1 freqs2] (map frequencies lists)]
+    (+ ;(map |(* $ (freqs1 $) (get freqs2 $ 0))
+             (keys freqs1)))))
 
 (defn main [&]
   # (def input-path "1.test.txt")

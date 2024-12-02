@@ -7,8 +7,6 @@
   (print (- end start))
   result)
 
-(defn not-empty? [s]
-  (not (empty? s)))
-
 (defn lines-from-file [path]
-  (filter not-empty? (string/split "\n" (slurp path))))
+  (filter |(not (empty? $))
+          (string/split "\n" (slurp path))))
