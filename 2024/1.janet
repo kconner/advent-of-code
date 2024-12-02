@@ -1,4 +1,4 @@
-(import ./tools :only [lines-from-file])
+(use ./tools)
 
 (def line-grammar
   (let [id ~(capture (some (range "09")))
@@ -8,7 +8,7 @@
 # zip of list of number pairs parsed from lines of the file
 (defn lists-from-file [path]
   (map array ;(map |(map scan-number (peg/match line-grammar $))
-                   (tools/lines-from-file path))))
+                   (lines-from-file path))))
 
 # sum of absolute differences of pairs across sorted lists
 (defn problem1 [lists]
@@ -22,8 +22,9 @@
              (keys freqs1)))))
 
 (defn main [&]
-  # (def input-path "1.test.txt")
-  (def input-path "1.txt")
-  (def lists (lists-from-file input-path))
-  (print (problem1 lists))
-  (print (problem2 lists)))
+  (spork/test/timeit
+    (let [path "1.txt"
+          # path "1.test.txt"
+          lists (lists-from-file path)]
+      (print (problem1 lists))
+      (print (problem2 lists)))))
