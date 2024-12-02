@@ -2,6 +2,8 @@
   :name "advent-2024"
   :dependencies [])
 
-(declare-executable
-  :name "1"
-  :entry "1.janet")
+(let [day-count 2]
+  (for day 1 (inc day-count)
+    (declare-executable
+      :name (string day)
+      :entry (string/format "%d.janet" day))))
