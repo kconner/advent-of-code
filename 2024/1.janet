@@ -23,8 +23,9 @@
 
 (defn main [&]
   (spork/test/timeit
-    (let [path "1.txt"
-          # path "1.test.txt"
-          lists (lists-from-file path)]
+    (do
+      (def path "1.txt")
+      # (def path "1.test.txt")
+      (def lists (lists-from-file path))
       (print (problem1 lists))
       (print (problem2 lists)))))

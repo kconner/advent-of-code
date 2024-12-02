@@ -9,8 +9,9 @@
 
 (defn main [&]
   (spork/test/timeit
-    (let [# path "n.txt"
-          path "n.test.txt"
-          model (model-from-file path)]
-      (print (problem1 model))
-      (print (problem2 model)))))
+    (do
+      # (def path "n.txt")
+      (def path "n.test.txt")
+      (def reports (reports-from-file path))
+      (print (problem1 reports))
+      (print (problem2 reports)))))
