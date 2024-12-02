@@ -18,7 +18,7 @@
 # sum of the products of ids with their frequencies in each list
 (defn problem2 [lists]
   (let [[freqs1 freqs2] (map frequencies lists)]
-    (+ ;(map |(* $ (freqs1 $) (get freqs2 $ 0))
+    (+ ;(map |(* $ (freqs1 $) (in freqs2 $ 0))
              (keys freqs1)))))
 
 (defn main [&]
