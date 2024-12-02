@@ -12,20 +12,26 @@
 (def safe-increases {+1 true +2 true +3 true})
 (def safe-decreases {-1 true -2 true -3 true})
 
+# safe when no difference between an adjacent level is not in the safe set.
+# the safe set depends on the sign of the first.
 (defn is-safe [report]
-  (def changes (map - (drop 1 report) report))
-  (def safe-changes (if (< 0 (first changes)) safe-increases safe-decreases))
-  (every? (map |(safe-changes $) changes)))
+  (let [changes (map - (drop 1 report) report)
+        safe-changes (if (< 0 (first changes)) safe-increases safe-decreases)]
+    (not (find |(not (safe-changes $)) changes))))
 
 (defn problem1 [reports]
   (count is-safe reports))
 
+# count of the reports for which the report or any of its slicings is safe.
+# slicings each omit one item.
 (defn problem2 [reports]
   (defn slicings [report]
     (map |(tuple/join (tuple/slice report 0 $)
                       (tuple/slice report (inc $)))
          (range (length report))))
-  (count |(some is-safe ~(,$ ,;(slicings $))) reports))
+  (count |(or (is-safe $)
+              (some is-safe (slicings $)))
+         reports))
 
 (defn main [&]
   (spork/test/timeit
