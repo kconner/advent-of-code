@@ -3,12 +3,9 @@
 (defn sum-of-muls [text]
   (+ ;(map |(apply * $) (partition 2 text))))
 
-(def mul-grammar
-  ~{:main (* "mul(" :int "," :int ")")
-    :int (/ (<- (between 1 3 (range "09"))) ,scan-number)})
-
-(def dont-range-grammar
-  ~(* "don't()" (any (if-not "do()" 1))))
+(def int-grammar ~(/ (<- (between 1 3 (range "09"))) ,scan-number))
+(def mul-grammar ~(* "mul(" ,int-grammar "," ,int-grammar ")"))
+(def dont-range-grammar ~(* "don't()" (any (if-not "do()" 1))))
 
 (defn problem1 [text]
   (->> text
