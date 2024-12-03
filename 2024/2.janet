@@ -1,8 +1,8 @@
 (use ./tools)
 
 (def line-grammar
-  (let [id ~(capture (some (range "09")))]
-    (peg/compile ~(* (some (* ,id " ")) ,id -1))))
+  (peg/compile ~{:main (* :int (some (* " " :int)) -1)
+                 :int (<- (some (range "09")))}))
 
 (defn reports-from-file [path]
   (map |(map scan-number (peg/match line-grammar $))

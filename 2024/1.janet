@@ -1,9 +1,9 @@
 (use ./tools)
 
 (def line-grammar
-  (let [id ~(capture (some (range "09")))
-        spaces ~(some " ")]
-    (peg/compile ~(* ,id ,spaces ,id -1))))
+  (peg/compile ~{:main (* :int :spaces :int -1)
+                 :int (<- (some (range "09")))
+                 :spaces (some " ")}))
 
 # zip of list of number pairs parsed from lines of the file
 (defn lists-from-file [path]
