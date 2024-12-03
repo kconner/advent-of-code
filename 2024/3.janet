@@ -1,13 +1,12 @@
 (use ./tools)
 
 (def int-grammar ~(/ (<- (between 1 3 (range "09"))) ,scan-number))
-(def mul-grammar ~(* "mul(" ,int-grammar "," ,int-grammar ")"))
+(def mul-grammar ~(/ (* "mul(" ,int-grammar "," ,int-grammar ")") ,tuple))
 (def dont-range-grammar ~(* "don't()" (any (if-not "do()" 1))))
 
 (defn sum-of-muls [text & extra-grammars]
   (->> text
        (peg/match ~(any (choice ,;extra-grammars ,mul-grammar 1)))
-       (partition 2)
        (map |(apply * $))
        (apply +)))
 
