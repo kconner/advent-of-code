@@ -10,8 +10,8 @@
 (defn main [&]
   (spork/test/timeit
     (do
-      # (def path "n.txt")
-      (def path "n.test.txt")
+      # (def path "3.txt")
+      (def path "3.test.txt")
       (def model (model-from-file path))
       (print (problem1 model))
       (print (problem2 model)))))
