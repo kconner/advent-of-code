@@ -7,15 +7,17 @@
   ~{:main (* "mul(" :int "," :int ")")
     :int (/ (<- (between 1 3 (range "09"))) ,scan-number)})
 
+(def dont-range-grammar
+  ~(* "don't()" (any (if-not "do()" 1))))
+
 (defn problem1 [text]
   (->> text
-       (peg/match ~{:main (any (choice ,mul-grammar 1))})
+       (peg/match ~(any (choice ,mul-grammar 1)))
        (sum-of-muls)))
 
 (defn problem2 [text]
   (->> text
-       (peg/match ~{:main (any (choice :dont-range ,mul-grammar 1))
-                    :dont-range (* "don't()" (any (if-not "do()" 1)))})
+       (peg/match ~(any (choice ,dont-range-grammar ,mul-grammar 1)))
        (sum-of-muls)))
 
 (defn main [&]
