@@ -1,28 +1,22 @@
 (use ./tools)
 
-(defn sum-of-muls [grammar text]
-  (->> text
-       (peg/match grammar)
-       (map scan-number)
-       (partition 2)
-       (map |(apply * $))
-       (apply +)))
+(defn sum-of-muls [text]
+  (+ ;(map |(apply * $) (partition 2 text))))
 
-(def mul-grammar ~{:main (* "mul(" :int "," :int ")")
-                   :int (<- (between 1 3 (range "09")))})
+(def mul-grammar
+  ~{:main (* "mul(" :int "," :int ")")
+    :int (/ (<- (between 1 3 (range "09"))) ,scan-number)})
 
 (defn problem1 [text]
-  (sum-of-muls
-    (peg/compile ~{:main (any (choice :mul 1))
-                   :mul ,mul-grammar})
-    text))
+  (->> text
+       (peg/match ~{:main (any (choice ,mul-grammar 1))})
+       (sum-of-muls)))
 
 (defn problem2 [text]
-  (sum-of-muls
-    (peg/compile ~{:main (any (choice :dont-range :mul 1))
-                   :dont-range (* "don't()" (any (if-not "do()" 1)))
-                   :mul ,mul-grammar})
-    text))
+  (->> text
+       (peg/match ~{:main (any (choice :dont-range ,mul-grammar 1))
+                    :dont-range (* "don't()" (any (if-not "do()" 1)))})
+       (sum-of-muls)))
 
 (defn main [&]
   (spork/test/timeit
