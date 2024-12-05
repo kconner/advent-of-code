@@ -29,7 +29,12 @@
        (map middle-item)
        (apply +)))
 
-(defn problem2 [model])
+(defn problem2 [{:lists lists :rules rules}]
+  (->> lists
+       (filter |(not (correctly-ordered-p rules $)))
+       (map |(sorted $ |(rules $&)))
+       (map middle-item)
+       (apply +)))
 
 (defn main [&]
   (spork/test/timeit
