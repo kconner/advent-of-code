@@ -15,7 +15,7 @@
 (defn correctly-ordered-p [rules list]
   (prompt 'out
     (eachp (i1 v1) (tuple/slice list 0 (dec (length list)))
-      (eachp (o2 v2) (drop (inc i1) list)
+      (each v2 (drop (inc i1) list)
         (if (rules ~(,v2 ,v1))
           (return 'out false))))
     true))
