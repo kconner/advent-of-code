@@ -25,7 +25,7 @@
 (defn in-bounds [dimension pos]
   (every? (map |(< -1 $ dimension) pos)))
 
-(defn problem1 [model]
+(defn default-visited-positions [model]
   (def {:dimension dimension :obstacles obstacles} model)
   (var guard (struct/to-table (model :guard-start)))
   (def visited-positions @{})
@@ -36,7 +36,10 @@
         (do
           (set (visited-positions (guard :pos)) true)
           (set (guard :pos) position-ahead)))))
-  (length visited-positions))
+  (keys visited-positions))
+
+(defn problem1 [model]
+  (length (default-visited-positions model)))
 
 (defn guard-loops [model extra-obstacle]
   (prompt 'out
@@ -59,13 +62,8 @@
           (set (guard :pos) position-ahead))))
     false)) # escaped without looping
 
-(defn all-positions [dimension]
-  (mapcat (fn [x] (map |(tuple $ x) (range dimension)))
-          (range dimension)))
-
 (defn problem2 [model]
-  (->> (model :dimension)
-       (all-positions)
+  (->> (default-visited-positions model)
        (map |(guard-loops model $))
        (count true?)))
 
