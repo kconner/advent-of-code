@@ -24,39 +24,84 @@
 (defn next-step [step]
   (case step up right right down down left left up))
 
-(defn problem1 [path]
-  (def input (slurp path))
-  (def dimension (string/find "\n" input))
-  (def wrap (inc dimension))
-  (defn position-for-character [wrap index]
-    ~(,(mod index wrap) ,(div index wrap)))
-  (var guard-position (position-for-character wrap (string/find "^" input)))
-  (var guard-step up)
-  (def obstacles (from-pairs (map |(tuple (position-for-character wrap $) true) (string/find-all "#" input))))
-  (defn in-bounds [pos]
-    (every? (map |(< -1 $ dimension) pos)))
-  (defn position-after-step [(px py) (sx sy)]
-    ~(,(+ px sx) ,(+ py sy)))
+(defn position-after-step [(px py) (sx sy)]
+  ~(,(+ px sx) ,(+ py sy)))
+
+(defn model-from-file [path]
+  (let [input (slurp path)
+        dimension (string/find "\n" input)
+        wrap (inc dimension)
+        char-position (fn [index] ~(,(mod index wrap) ,(div index wrap)))]
+    {:dimension dimension
+     :obstacles (from-pairs (map |(tuple (char-position $) true)
+                                 (string/find-all "#" input)))
+     :guard-start {:pos (char-position (string/find "^" input))
+                   :step up}}))
+
+(defn in-bounds [dimension pos]
+  (every? (map |(< -1 $ dimension) pos)))
+
+(defn problem1 [model]
+  (def {:dimension dimension :obstacles obstacles} model)
+  (var guard (struct/to-table (model :guard-start)))
   (def visited-positions @{})
-  (while (in-bounds guard-position)
-    (let [position-ahead (position-after-step guard-position guard-step)]
+  (while (in-bounds dimension (guard :pos))
+    (let [position-ahead (position-after-step (guard :pos) (guard :step))]
       (if (obstacles position-ahead)
-        (set guard-step (next-step guard-step))
+        (set (guard :step) (next-step (guard :step)))
         (do
-          (pp guard-position)
-          (set (visited-positions guard-position) true)
-          (set guard-position position-ahead)))))
+          (set (visited-positions (guard :pos)) true)
+          (set (guard :pos) position-ahead)))))
   (length visited-positions))
 
-(defn problem2 [path])
+(defn guard-loops [model extra-obstacle]
+  (prompt 'out
+    (def {:dimension dimension :obstacles permanent-obstacles} model)
+    (if (permanent-obstacles extra-obstacle)
+      (do
+        # (pp ['redundant extra-obstacle @{}])
+        (return 'out false))) # already an obstacle; won't make a difference
+    (def obstacles (table/clone permanent-obstacles))
+    (set (obstacles extra-obstacle) true)
+    (var guard (struct/to-table (model :guard-start)))
+    (def visited-orientations @{})
+    (while (in-bounds dimension (guard :pos))
+      (let [position-ahead (position-after-step (guard :pos) (guard :step))]
+        (if (obstacles position-ahead)
+          (do
+            (set (guard :step) (next-step (guard :step)))
+            (if (visited-orientations (table/to-struct guard))
+              (do
+                # (pp ['looped-on-turn extra-obstacle visited-orientations])
+                (return 'out true)))) # detected a loop
+          (let [orientation (table/to-struct guard)]
+            (if (visited-orientations orientation)
+              (do
+                # (pp ['looped extra-obstacle visited-orientations])
+                (return 'out true))) # detected a loop
+            (do
+              (set (visited-orientations orientation) true)
+              (set (guard :pos) position-ahead))))))
+    # (pp ['escaped extra-obstacle])
+    false)) # escaped without looping
 
-(position-after-step guard-position guard-step)
+(defn all-positions [dimension]
+  (mapcat (fn [x] (map |(tuple $ x) (range dimension)))
+          (range dimension)))
+
+(defn problem2 [model]
+  (->> (model :dimension)
+       (all-positions)
+       (map |(guard-loops model $))
+       (count true?)))
 
 (defn main [&]
   (spork/test/timeit
     (do
-      # (def path "6.txt")
+      (def path "6.txt")
       (def path "6.test.txt")
-      # (def model (model-from-file path))
-      (print (problem1 path))
-      (print (problem2 path)))))
+      (def model (model-from-file path))
+      (print (problem1 model))
+      (print (problem2 model))
+      #
+)))
