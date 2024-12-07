@@ -64,8 +64,7 @@
 
 (defn problem2 [model]
   (->> (default-visited-positions model)
-       (map |(guard-loops model $))
-       (count true?)))
+       (count |(guard-loops model $))))
 
 (defn main [&]
   (spork/test/timeit
