@@ -10,10 +10,12 @@
 
 (defn solvable-p [{:test test :operands [o & os]}]
   (defn iter [acc operands]
-    (match operands
-      [o & os] (or (iter (* acc o) os)
-                   (iter (+ acc o) os))
-      [] (= test acc)))
+    (if (< test acc)
+      false
+      (match operands
+        [o & os] (or (iter (* acc o) os)
+                     (iter (+ acc o) os))
+        [] (= test acc))))
   (iter o os))
 
 (defn problem1 [equations]
@@ -22,15 +24,26 @@
        (map |($ :test))
        (apply +)))
 
+(defn digit-count-to-tenth [n]
+  (cond
+    (< n 10) 10
+    (< n 100) 100
+    (< n 1000) 1000
+    (< n 10000) 10000
+    true "assertion failed"))
+
+(defn catenate [a b]
+  (+ b (* a (digit-count-to-tenth b))))
+
 (defn solvable-with-catenation-p [{:test test :operands [o & os]}]
-  (defn catenate [a b]
-    (scan-number (string/format "%d%d" a b)))
   (defn iter [acc operands]
-    (match operands
-      [o & os] (or (iter (catenate acc o) os)
-                   (iter (* acc o) os)
-                   (iter (+ acc o) os))
-      [] (= test acc)))
+    (if (< test acc)
+      false
+      (match operands
+        [o & os] (or (iter (* acc o) os)
+                     (iter (+ acc o) os)
+                     (iter (catenate acc o) os))
+        [] (= test acc))))
   (iter o os))
 
 (defn problem2 [equations]
