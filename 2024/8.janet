@@ -36,13 +36,12 @@
   (each antennae freqs
     (each a antennae
       (each b antennae
-        (if (not= a b)
-          (do
-            (def step (map - a b))
-            (var pos a)
-            (while (in-bounds dimension pos)
-              (set (antinodes pos) true)
-              (set pos (tuple ;(map + pos step)))))))))
+        (when (not= a b)
+          (def step (map - a b))
+          (var pos a)
+          (while (in-bounds dimension pos)
+            (set (antinodes pos) true)
+            (set pos (tuple ;(map + pos step))))))))
   (length antinodes))
 
 (defn main [&]
