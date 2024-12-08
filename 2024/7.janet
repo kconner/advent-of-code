@@ -5,18 +5,20 @@
        (peg/match ~{:main (some :line)
                     :line (/ (* :int ":" :operands "\n")
                              ,|{:test $0 :operands $1})
-                    :operands (/ (some (* " " :int)) ,tuple)
+                    :operands (/ (some (* " " :int)) ,|(reverse $&))
                     :int (/ (<- (some (range "09"))) ,scan-number)})))
 
-(defn solvable-p [{:test test :operands [o & os]}]
-  (defn iter [acc operands]
-    (if (< test acc)
-      false
-      (match operands
-        [o & os] (or (iter (* acc o) os)
-                     (iter (+ acc o) os))
-        [] (= test acc))))
-  (iter o os))
+(defn integer? [v] (= (mod v 1) 0))
+
+(defn solvable-p [{:test test :operands operands}]
+  (defn iter [acc [o & os]]
+    (if (empty? os)
+      (= acc o)
+      (or (let [accc (/ acc o)]
+            (and (integer? accc) (iter accc os)))
+          (let [accc (- acc o)]
+            (and (pos? accc) (iter accc os))))))
+  (iter test operands))
 
 (defn problem1 [equations]
   (->> equations
@@ -32,23 +34,24 @@
     (< n 10000) 10000
     true "assertion failed"))
 
-(defn catenate [a b]
-  (+ b (* a (digit-count-to-tenth b))))
+(defn decatenate [acc o]
+  (/ (- acc o) (digit-count-to-tenth o)))
 
-(defn solvable-with-catenation-p [{:test test :operands [o & os]}]
-  (defn iter [acc operands]
-    (if (< test acc)
-      false
-      (match operands
-        [o & os] (or (iter (* acc o) os)
-                     (iter (+ acc o) os)
-                     (iter (catenate acc o) os))
-        [] (= test acc))))
-  (iter o os))
+(defn solvable-with-decatenation-p [{:test test :operands operands}]
+  (defn iter [acc [o & os]]
+    (if (empty? os)
+      (= acc o)
+      (or (let [accc (/ acc o)]
+            (and (integer? accc) (iter accc os)))
+          (let [accc (- acc o)]
+            (and (pos? accc) (iter accc os)))
+          (let [accc (decatenate acc o)]
+            (and (integer? accc) (iter accc os))))))
+  (iter test operands))
 
 (defn problem2 [equations]
   (->> equations
-       (filter solvable-with-catenation-p)
+       (filter solvable-with-decatenation-p)
        (map |($ :test))
        (apply +)))
 
