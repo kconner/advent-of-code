@@ -1,13 +1,13 @@
 (use ./tools)
 
-# todo: filter out {:count 0}?
 (defn model-from-file [path]
   (->> (slurp path)
        (peg/match ~{:main (* (some (* :file :space)) :file)
                     :file (/ (* :id :digit) ,|{:id $0 :count $1})
                     :space (/ :digit ,|{:count $})
                     :id (/ ($) ,|(/ $ 2))
-                    :digit (/ (<- (range "09")) ,scan-number)})))
+                    :digit (/ (<- (range "09")) ,scan-number)})
+       (filter |(not= ($ :count) 0))))
 
 (defn disk-from-model [model]
   (def disk @[]) # (array/ensure @[] 200000 0))
@@ -48,21 +48,26 @@
 
         (def src-file (model src-cursor))
         (def {:id src-id :count src-count} src-file)
-        (when (nil? src-id) (return 'next-src)) # space stays put
+        (when (nil? src-id) (return 'next-src))
+
         (for dest-cursor 0 src-cursor
           (def {:id dest-id :count dest-count} (model dest-cursor))
           (when (and (nil? dest-id) (<= src-count dest-count))
-            (set (model src-cursor) {:count src-count}) # leave empty space behind
-            (set (model dest-cursor) src-file) # replace the space
-            (def remainder (- dest-count src-count)) # what to do with extra space
+            # leave empty space behind
+            (set (model src-cursor) {:count src-count})
+            # replace the space with the file
+            (set (model dest-cursor) src-file)
+            # keep track of space we didn't use
+            (def remainder (- dest-count src-count))
             (cond
               # neatly filled, no-op
               (zero? remainder) nil
               # next is space, add to it
-              (nil? ((model (inc dest-cursor)) :id)) (update model
-                                                             (inc dest-cursor)
-                                                             |{:count (+ ($ :count)
-                                                                         remainder)})
+              (nil? ((model (inc dest-cursor)) :id))
+              (update model
+                      (inc dest-cursor)
+                      |{:count (+ ($ :count)
+                                  remainder)})
               # next is a file, insert new space
               true (do
                      (array/insert model (inc dest-cursor) {:count remainder})
