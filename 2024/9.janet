@@ -38,36 +38,17 @@
        (move-blocks)
        (checksum)))
 
-# This time, attempt to move whole files to the leftmost span of free space
-# blocks that could fit the file. Attempt to move each file exactly once in
-# order of decreasing file ID number starting with the file with the highest
-# file ID number. If there is no span of free space to the left of a file that
-# is large enough to fit the file, the file does not move.
-
 (defn move-files [model]
-  # for each file from right to left (indexed by src-cursor)
-  # scan for a free space block of sufficient size, stopping at the cursor index
-  # if one is found,
-  # - replace the source file with a free space; don't bother joining it
-  # - replace the destination space with the file
-  # - if there was a remainder of space, then
-  #   - if the next item is space, increase it
-  #   - otherwise insert a new space object and adjust the cursor index
-  # - break from the search
   (var src-cursor (length model))
-  # todo loop somehow
   (prompt 'out
     (while true
       (prompt 'next-src
         (set src-cursor (dec src-cursor))
-        # (pp [src-cursor model])
         (when (zero? src-cursor) (return 'out))
 
         (def src-file (model src-cursor))
         (def {:id src-id :count src-count} src-file)
         (when (nil? src-id) (return 'next-src)) # space stays put
-        # (var dest-cursor 2)
-        # (set dest-cursor (inc dest-cursor))
         (for dest-cursor 0 src-cursor
           (def {:id dest-id :count dest-count} (model dest-cursor))
           (when (and (nil? dest-id) (<= src-count dest-count))
@@ -89,17 +70,6 @@
             # stop the search
             (return 'next-src))))))
   model)
-
-# (while (< space-cursor tail-cursor)
-#   (cond
-#     (nil? (disk space-cursor))
-#     (do
-#       (set (disk space-cursor) (disk tail-cursor))
-#       (array/remove disk tail-cursor)
-#       (set tail-cursor (dec tail-cursor)))
-#     true (set space-cursor (inc space-cursor))))
-# #
-# disk)
 
 (defn problem2 [model]
   (->> model
