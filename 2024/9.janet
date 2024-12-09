@@ -10,7 +10,7 @@
        (filter |(not= ($ :count) 0))))
 
 (defn disk-from-model [model]
-  (def disk @[]) # (array/ensure @[] 200000 0))
+  (def disk @[])
   (each {:id id :count block-count} model
     (repeat block-count
       (array/push disk id)))
