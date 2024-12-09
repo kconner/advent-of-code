@@ -59,19 +59,9 @@
             (set (model dest-cursor) src-file)
             # keep track of space we didn't use
             (def remainder (- dest-count src-count))
-            (cond
-              # neatly filled, no-op
-              (zero? remainder) nil
-              # next is space, add to it
-              (nil? ((model (inc dest-cursor)) :id))
-              (update model
-                      (inc dest-cursor)
-                      |{:count (+ ($ :count)
-                                  remainder)})
-              # next is a file, insert new space
-              true (do
-                     (array/insert model (inc dest-cursor) {:count remainder})
-                     (set src-cursor (inc src-cursor)))) # src cursor was altered
+            (when (< 0 remainder)
+              (array/insert model (inc dest-cursor) {:count remainder})
+              (set src-cursor (inc src-cursor)))
             # stop the search
             (return 'next-src))))))
   model)
