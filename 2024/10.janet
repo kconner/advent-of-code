@@ -22,9 +22,24 @@
 # sum them.
 
 (defn model-from-file [path]
-  (lines-from-file path))
+  (let [input (slurp path)
+        dimension (string/find "\n" input)
+        wrap (inc dimension)
+        char-position (fn [index] ~(,(mod index wrap) ,(div index wrap)))]
+    {:dimension dimension
+     :grid (first (peg/match ~{:main (/ (some (choice (* :position :digit) "\n")) ,struct)
+                               :digit (/ (<- (range "09")) ,scan-number)
+                               :position (/ ($) ,char-position)} input))}))
 
-(defn problem1 [model])
+(def up '(0 -1))
+(def right '(1 0))
+(def down '(0 1))
+(def left '(-1 0))
+
+(defn problem1 [model]
+
+  #
+)
 
 (defn problem2 [model])
 
