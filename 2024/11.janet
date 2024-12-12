@@ -1,17 +1,16 @@
 (use ./tools)
 
-# 0 -> 1
-# even number of digits AAABBB -> AAA BBB,
-#   and drop leading 0s so sometimes it's AAA BB.
-# otherwise N -> 2024*N
-
-# how many stones after 25 blinks?
-# this looks like a job for memoization.
+(defn insert [counted-set stone stone-count]
+  (update counted-set stone
+          (fn [value]
+            (default value 0)
+            (+ value stone-count))))
 
 (defn stones-from-file [path]
   (->> (slurp path)
        (peg/match ~{:main (some (* :int (choice " " "\n")))
-                    :int (/ (<- (some (range "09"))) ,scan-number)})))
+                    :int (/ (<- (some (range "09"))) ,scan-number)})
+       (reduce |(insert $0 $1 1) @{})))
 
 (defn half-digit-count-to-tenth [n]
   (cond
@@ -23,13 +22,10 @@
     (< n 1000000000000) 1000000
     true "assertion failed"))
 
-(half-digit-count-to-tenth 999999)
-
 (defn split [stone]
-  (let [factor (half-digit-count-to-tenth stone)]
-    [(div stone factor) (mod stone factor)]))
-
-(split 255000)
+  (let [factor (half-digit-count-to-tenth stone)
+        result @{(div stone factor) 1}]
+    (insert result (mod stone factor) 1)))
 
 (defn digit-count-even? [n]
   (cond
@@ -42,49 +38,47 @@
     (< n 10000000) false
     (< n 100000000) true
     (< n 1000000000) false
-    (< n 10000000000) true
     true "assertion failed"))
 
-(digit-count-even? 1000)
+(defn blink [stone]
+  (cond
+    (zero? stone) @{1 1}
+    (digit-count-even? stone) (split stone)
+    true @{(* stone 2024) 1}))
 
-(defn blink [cache stone]
-  (let [cached (cache stone)]
-    (if (truthy? cached)
-      cached
-      (let [result (cond
-                     (zero? stone) [1]
-                     (digit-count-even? stone) (split stone)
-                     true [(* stone 2024)])]
-        (set (cache stone) result)
-        result))))
+(defn scale-counts [counted-set factor]
+  (each key (keys counted-set)
+    (update counted-set key |(* $ factor)))
+  counted-set)
 
-(defn blink-times [cache stone n]
-  (let [stones (blink cache stone)]
-    (if (<= n 1)
-      stones
-      (mapcat |(blink-times cache $ (dec n)) stones))))
+(defn insert-set [counted-set additions]
+  (eachp (stone stone-count) additions
+    (insert counted-set stone stone-count))
+  counted-set)
 
-stones
-(length (blink-times @{} 17 25))
+(defn blink-all [stones]
+  (let [result @{}]
+    (eachp (stone stone-count) stones
+      (insert-set result (scale-counts (blink stone) stone-count)))
+    result))
 
 (defn problem1 [stones]
-  (def cache @{})
-  (->> stones
-       (mapcat |(blink-times cache $ 25))
-       (length)))
+  (var result stones)
+  (for i 0 25
+    (set result (blink-all result)))
+  (+ ;(values result)))
 
 (defn problem2 [stones]
-  (def cache @{})
-  (->> stones
-       (mapcat |(blink-times cache $ 75))
-       (length)))
-
+  (var result stones)
+  (for i 0 75
+    (set result (blink-all result)))
+  (+ ;(values result)))
 
 (defn main [&]
   (spork/test/timeit
     (do
-      # (def path "11.txt")
-      (def path "11.test.txt")
+      (def path "11.txt")
+      # (def path "11.test.txt")
       (def stones (stones-from-file path))
       (print (problem1 stones))
       (print (problem2 stones)))))
