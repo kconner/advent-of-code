@@ -1,54 +1,10 @@
 (use ./tools)
 
-# region: contiguous same letters, at least one
-# need to know a region's area and perimeter
-# area: number of squares
-# perimeter: "number of sides of garden plots in the region that do not touch
-# another garden plot in the same region", and that means it includes the
-# outer border. holes count too.
-# price = area * perimeter.
-
-# first we identify all the regions.
-# the total area of all regions should equal the total area of the board.
-# then we figure out the perimeters. or maybe those can be a side effect of
-# the region search.
-
-# how about we look at each square in reading order starting from the corner.
-# first declare it its own region.
-# then look at the adjacent square to the left.
-# - if it's the same, merge regions.
-# - if it's out of bounds, add to the perimeter.
-# - if it's different, add to both perimeters.
-# then look at the adjacent square above; do the same.
-# then if it's on the far right, add to the perimeter.
-# then if it's on the bottom, add to the perimeter.
-
-# so what is a region?
-# - a crop character
-# - a region id: the first square identified
-# - a set of squares like @{(3, 5) true}
-#   - its area is the length of this
-# - a perimeter like 12
-
-# what operations are there?
-# same crop type as me? check a region's crop character
-# region area? (length squares)
-# region price? (* area perimeter)
-# get every region? let's keep a table by region id
-# which region is at [x, y]?
-# - i could O(n) search the region table
-# - or i could make an index like @{square region}
-# annex a new region into an old region
-# - add annexed squares to the old region squares
-# - add to the perimeter
-# - delete the annexed region from the region table
-#   - update the region index, if i make that
-
 (defn model-from-file [path]
   (let [input (slurp path)
         dimension (string/find "\n" input)
         wrap (inc dimension)
-        char-position (fn [index] ~(,(mod index wrap) ,(div index wrap)))]
+        char-position (fn [index] [(mod index wrap) (div index wrap)])]
     {:dimension dimension
      :grid (first (peg/match
                     ~{:main (/ (some (choice (* :position :character) "\n")) ,struct)
@@ -69,13 +25,11 @@
     # add to the perimeter
     (update region :perimeter |(+ $ (patch :perimeter)))
     # delete the annexed region from the region table
-    (set (regions (patch :id)) nil)
-    # TODO: update the region index, if i make that
-)
+    (set (regions (patch :id)) nil))
   region)
 
 (defn region-at [regions square]
-  # TODO: O(n) so maybe we do an index later?
+  # O(n) so maybe we do an index later?
   (find |(($ :squares) square) (values regions)))
 
 (defn regions-from-model [{:dimension dimension :grid grid}]
@@ -131,19 +85,43 @@
 (defn region-area [region]
   (length (region :squares)))
 
-(defn region-price [region]
-  (* (region-area region) (region :perimeter)))
+(defn region-price [prop region]
+  (* (region-area region) (region prop)))
 
 (defn problem1 [model]
-  (+ ;(map region-price (regions-from-model model))))
+  (+ ;(map |(region-price :perimeter $) (regions-from-model model))))
 
-(defn problem2 [model])
+(defn squares-around [[px py]]
+  [[px py] [(dec px) py] [px (dec py)] [(dec px) (dec py)]])
+
+(defn count-corners [{:dimension dimension :grid grid} regions]
+  (each region regions
+    (set (region :corner-count) 0))
+
+  (for y 0 (inc dimension)
+    (for x 0 (inc dimension)
+      (def squares-by-region (group-by |(region-at regions $)
+                                       (squares-around [x y])))
+      (eachp (region squares) squares-by-region
+        (if (odd? (length squares))
+          (update region :corner-count inc)
+          # it's 2. add two corners only if they're catty-corner
+          (let [[x0 y0] (squares 0)
+                [x1 y1] (squares 1)]
+            (when (and (not= x0 x1) (not= y0 y1))
+              (update region :corner-count |(+ 2 $)))))))))
+
+(defn problem2 [model]
+  (def regions (regions-from-model model))
+  (count-corners model regions)
+  (+ ;(map |(region-price :corner-count $) regions)))
 
 (defn main [&]
   (spork/test/timeit
     (do
       (def path "12.txt")
-      (def path "12.test.txt")
+      # (def path "12.test.txt")
+      # (def path "12.test2.txt")
       (def model (model-from-file path))
       (print (problem1 model))
       (print (problem2 model)))))
