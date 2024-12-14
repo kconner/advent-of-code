@@ -19,12 +19,10 @@
   # B = (ax gy - ay gx) / (ax by - ay bx)
   (def b-count (/ (- (* ax gy) (* ay gx))
                   (- (* ax by) (* ay bx))))
-
   (def a-count (/ (- gx (* bx b-count)) ax))
   (if
     (and (zero? (mod a-count 1))
          (zero? (mod b-count 1)))
-
     (+ (* 3 a-count) b-count)
     nil))
 
