@@ -25,9 +25,10 @@
                     :goal (/ (* "Prize: X=" :int ", Y=" :int "\n") ,tuple)
                     :int (/ (<- (some (range "09"))) ,scan-number)})))
 
-(defn solve-game [{:a a :b b :goal goal}]
+(defn solve-game [limit {:a a :b b :goal goal}]
   (def [[ax ay] [bx by] [gx gy]] [a b goal])
-  (var [a-count b-count] [0 100])
+  (def initial-b (min limit (inc (max (div gx bx) (div gy by)))))
+  (var [a-count b-count] [0 initial-b])
   (var [px py] [(+ (* a-count ax) (* b-count bx))
                 (+ (* a-count ay) (* b-count by))])
   (prompt 'out
@@ -48,7 +49,7 @@
 
 (defn problem1 [games]
   (->> games
-       (map solve-game)
+       (map |(solve-game 100 $))
        (filter number?)
        (apply +)))
 
