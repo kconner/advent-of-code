@@ -1,22 +1,5 @@
 (use ./tools)
 
-# 4 games -> 320 games
-
-# push A: 3 tokens
-# push B: 1 token
-
-# button press limit: 100 per button
-
-# for each game, can it be solved,
-# and if so, what's the fewest tokens you can spend to solve it?
-
-# i picture slowly increasing cost while circling the prize to reach it.
-# let's say i start wih 100 Bs since that's cheaper.
-# when on the prize I stop and call this the cheapest.
-# while both right and forward of the prize i subtract a B.
-# while either left or behind the prize i add an A.
-# no solution when B falls below 0.
-
 (defn games-from-file [path]
   (->> (slurp path)
        (peg/match ~{:main (* :game (any (* "\n" :game)))
@@ -25,35 +8,37 @@
                     :goal (/ (* "Prize: X=" :int ", Y=" :int "\n") ,tuple)
                     :int (/ (<- (some (range "09"))) ,scan-number)})))
 
-(defn solve-game [limit {:a a :b b :goal goal}]
-  (def [[ax ay] [bx by] [gx gy]] [a b goal])
-  (def initial-b (min limit (inc (max (div gx bx) (div gy by)))))
-  (var [a-count b-count] [0 initial-b])
-  (var [px py] [(+ (* a-count ax) (* b-count bx))
-                (+ (* a-count ay) (* b-count by))])
-  (prompt 'out
-    (while (<= 0 b-count)
-      # (pp [[a-count b-count] [px py] [(+ (* a-count ax) (* b-count bx)) (+ (* a-count ay) (* b-count by))] [gx gy]])
-      (cond
-        (= [px py] goal) (return 'out (+ (* 3 a-count) b-count))
-        (and (<= gx px) (<= gy py))
-        (do
-          (set b-count (dec b-count))
-          (set px (- px bx))
-          (set py (- py by)))
-        true
-        (do
-          (set a-count (inc a-count))
-          (set px (+ px ax))
-          (set py (+ py ay)))))))
+(defn solve-game [{:a a :b b :goal goal} &named limit goal-offset]
+  (default limit math/inf)
+  (default goal-offset [0 0])
+  (def [[ax ay] [bx by] [gx gy]] [a b (map + goal-offset goal)])
+  # gx = ax A + bx B
+  # gy = ay A + by B
+  # (algebra ensues)
+  # A = (gx - bx B) / ax = (gy - by B) / ay
+  # B = (ax gy - ay gx) / (ax by - ay bx)
+  (def b-count (/ (- (* ax gy) (* ay gx))
+                  (- (* ax by) (* ay bx))))
+
+  (def a-count (/ (- gx (* bx b-count)) ax))
+  (if
+    (and (zero? (mod a-count 1))
+         (zero? (mod b-count 1)))
+
+    (+ (* 3 a-count) b-count)
+    nil))
 
 (defn problem1 [games]
   (->> games
-       (map |(solve-game 100 $))
+       (map |(solve-game $ :limit 100))
        (filter number?)
        (apply +)))
 
-(defn problem2 [games])
+(defn problem2 [games]
+  (->> games
+       (map |(solve-game $ :goal-offset [10000000000000 10000000000000]))
+       (filter number?)
+       (apply +)))
 
 (defn main [&]
   (spork/test/timeit
