@@ -44,8 +44,7 @@
     (set square [;(map + square step)]))
   (match (grid square)
     :wall nil
-    nil square
-    _ (do (pp "assertion failed") "WAT")))
+    nil square))
 
 (defn kick-narrow-box? [grid destination step]
   (match (find-space-beyond-boxes grid destination step)
@@ -98,14 +97,50 @@
 #                   (widen (model :dimension) (model :grid))))
 
 (defn kick-wide-box? [grid start step]
-  # todo ok now what?
-  false)
+  (def box-sides-to-move @[])
+  (def box-sides-to-verify-movable @[])
+  (def verified @{})
+  (def enqueue-pairs (zero? (first step))) # move whole boxes during vertical kicks
+  (defn enqueue [square]
+    (array/push box-sides-to-verify-movable square)
+    (if enqueue-pairs
+      (array/push box-sides-to-verify-movable
+                  [(+ (square 0) (match (grid square) :box-left 1 :box-right -1))
+                   (square 1)])))
+  (defn dequeue []
+    (let [square (box-sides-to-verify-movable 0)]
+      (array/remove box-sides-to-verify-movable 0)
+      square))
+  (enqueue start)
+  (prompt 'out
+    (while (not (empty? box-sides-to-verify-movable))
+      (def square (dequeue))
+      (when (not (verified square))
+        (set (verified square) true)
+        (array/push box-sides-to-move square)
+        (def neighbor [;(map + square step)])
+        (match (grid neighbor)
+          nil (do)
+          :wall (return 'out false)
+          :box-left (enqueue neighbor)
+          :box-right (enqueue neighbor))))
+    (reverse! box-sides-to-move)
+    (each square box-sides-to-move
+      (set (grid [;(map + square step)]) (grid square))
+      (set (grid square) nil))
+    true))
 
 (defn problem2 [{:dimension dimension :grid grid :start [sx sy] :steps steps}]
+  (print (string-of [dimension dimension] grid))
   (def wide-grid (widen dimension grid))
   (def wide-start [(* 2 sx) sy])
-  (reduce |(try-step wide-grid $0 $1 kick-wide-box?) wide-start steps)
-  (+ ;(map gps-of (filter |(= (wide-grid $) :box) (keys wide-grid)))))
+  (print (string-of [(* 2 dimension) dimension] wide-grid))
+  (reduce |(let [result (try-step wide-grid $0 $1 kick-wide-box?)]
+             (print (string-of [(* 2 dimension) dimension] wide-grid))
+             result)
+          wide-start steps)
+  (print (string-of [(* 2 dimension) dimension] wide-grid))
+  (+ ;(map gps-of (filter |(= (wide-grid $) :box-left) (keys wide-grid)))))
 
 (defn main [&]
   (spork/test/timeit
@@ -114,4 +149,5 @@
       # (def path "15.test.txt")
       (def model (model-from-file path))
       (print (problem1 model))
+      (def model (model-from-file path))
       (print (problem2 model)))))
