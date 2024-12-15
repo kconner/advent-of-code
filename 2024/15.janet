@@ -8,7 +8,7 @@
         start (char-position (string/find "@" input))]
     (first (peg/match
              ~{:main (/ (* :grid :steps)
-                        ,|{:grid $0 :start start :steps $1})
+                        ,|{:dimension dimension :grid $0 :start start :steps $1})
                :grid (/ (some (choice (* :position :object) "\n")) ,table)
                :object (/ (<- (choice "#" "." "O" "@"))
                           ,|(match $ "#" :wall "O" :box _ nil))
@@ -46,13 +46,55 @@
   (reduce |(try-step grid $0 $1) start steps)
   (+ ;(map gps-of (filter |(= (grid $) :box) (keys grid)))))
 
-(defn problem2 [model])
+(defn widen [dimension grid]
+  (def wide-grid @{})
+  (for x 0 dimension
+    (def x1 (* 2 x))
+    (def x2 (inc x1))
+    (for y 0 dimension
+      (match (grid [x y])
+        :wall (do
+                (set (wide-grid [x1 y]) :wall)
+                (set (wide-grid [x2 y]) :wall))
+        :box (do
+               (set (wide-grid [x1 y]) :box-left)
+               (set (wide-grid [x2 y]) :box-right))
+        _ (do))))
+  wide-grid)
+
+(defn string-of [[dim-x dim-y] grid]
+  (def characters @[])
+  (each y (range dim-y)
+    (array/push characters
+                ;(map |(match (grid [$ y])
+                         :wall "#"
+                         :box "O"
+                         :box-left "["
+                         :box-right "]"
+                         nil ".")
+                      (range dim-x)) "\n"))
+  (string/join characters))
+
+# (print (string-of [(model :dimension) (model :dimension)] (model :grid)))
+
+# (print (string-of [(* 2 (model :dimension)) (model :dimension)]
+#                   (widen (model :dimension) (model :grid))))
+
+(defn try-step-2 [grid robot step]
+  # ok now what
+)
+
+(defn problem2 [{:dimension dimension :grid grid :start [sx sy] :steps steps}]
+  (def wide-grid (widen dimension grid))
+  (def wide-start [(* 2 sx) sy])
+  (reduce |(try-step-2 wide-grid $0 $1) wide-start steps)
+  (+ ;(map gps-of (filter |(= (wide-grid $) :box) (keys wide-grid)))))
 
 (defn main [&]
   (spork/test/timeit
     (do
       (def path "15.txt")
-      # (def path "15.test.txt")
+      (def path "15.test.txt")
       (def model (model-from-file path))
       (print (problem1 model))
       (print (problem2 model)))))
