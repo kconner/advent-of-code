@@ -131,15 +131,9 @@
     true))
 
 (defn problem2 [{:dimension dimension :grid grid :start [sx sy] :steps steps}]
-  (print (string-of [dimension dimension] grid))
   (def wide-grid (widen dimension grid))
   (def wide-start [(* 2 sx) sy])
-  (print (string-of [(* 2 dimension) dimension] wide-grid))
-  (reduce |(let [result (try-step wide-grid $0 $1 kick-wide-box?)]
-             (print (string-of [(* 2 dimension) dimension] wide-grid))
-             result)
-          wide-start steps)
-  (print (string-of [(* 2 dimension) dimension] wide-grid))
+  (reduce |(try-step wide-grid $0 $1 kick-wide-box?) wide-start steps)
   (+ ;(map gps-of (filter |(= (wide-grid $) :box-left) (keys wide-grid)))))
 
 (defn main [&]
