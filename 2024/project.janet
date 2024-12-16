@@ -2,7 +2,7 @@
   :name "advent-2024"
   :dependencies [])
 
-(let [day-count 15]
+(let [day-count 16]
   (for day 1 (inc day-count)
     (declare-executable
       :name (string day)
