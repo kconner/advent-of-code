@@ -48,18 +48,90 @@
 # First we parse the grid.
 
 (defn model-from-file [path]
-  (->> (slurp path)
-       (peg/match ~{:main 1})))
+  (let [input (slurp path)
+        dimension (string/find "\n" input)
+        wrap (inc dimension)
+        char-position (fn [index] [(mod index wrap) (div index wrap)])
+        start (char-position (string/find "S" input))
+        end (char-position (string/find "E" input))
+        grid (->> input
+                  (peg/match
+                    ~{:main (/ (some (choice (* :position :space) "#" "\n")) ,table)
+                      :space (* (constant true) (choice "." "S" "E"))
+                      :position (/ ($) ,char-position)})
+                  (first))]
+    {:grid grid
+     :start [start [1 0]]
+     :end end}))
 
-(defn problem1 [model])
+(def move-options
+  (let [e [1 0] w [-1 0] n [0 -1] s [0 1] stay [0 0]]
+    {e [[1 e e] [1000 stay n] [1000 stay s]]
+     w [[1 w w] [1000 stay n] [1000 stay s]]
+     n [[1 n n] [1000 stay e] [1000 stay w]]
+     s [[1 s s] [1000 stay e] [1000 stay w]]}))
+
+(defn next-scored-moves [grid score [pos dir]]
+  (filter (fn [[_ [p _]]] (grid p))
+          (map
+            (fn [[addend step new-dir]]
+              [(+ score addend) [[;(map + pos step)] new-dir]])
+            (move-options dir))))
+
+(defn bfs [{:grid grid :start start :end end}]
+  (def score-queue @[]) # score, ordered ascending
+  (def moves-by-score @{}) # score: array of move
+
+  (defn dequeue-bucket []
+    (def score (score-queue 0))
+    (array/remove score-queue 0)
+    (def moves (moves-by-score score))
+    (set (moves-by-score score) nil) # TODO: Remove and see if it's faster
+    [score moves])
+
+  # To enqueue a move at a score,
+  # - Get the bucket for the score
+  #   - If it doesn't exist,
+  #     - Add it, an empty array, to the buckets by score table
+  #     - Insert the score in the score list
+  # - Push the move on the array
+  (defn enqueue-scored-move [score move]
+    (var moves (moves-by-score score))
+    (if (nil? moves)
+      (do
+        (set moves @[move])
+        (set (moves-by-score score) moves)
+        # TODO: Binary search instead to reduce by O(n)
+        (array/push score-queue score)
+        (sort score-queue))
+      (array/push moves move)))
+
+  (enqueue-scored-move 0 start)
+
+  # now we BFS
+  (def visited @{}) # move: true
+  (prompt 'out
+    (while (not (empty? score-queue))
+      (def [score moves] (dequeue-bucket))
+      (each move moves
+        (when (not (visited move))
+          (set (visited move) true)
+          (when (= (first move) end)
+            (return 'out score))
+          (each [score move] (next-scored-moves grid score move)
+            (enqueue-scored-move score move)))))))
+
+(defn problem1 [model]
+  (bfs model))
 
 (defn problem2 [model])
 
 (defn main [&]
   (spork/test/timeit
     (do
-      # (def path "16.txt")
-      (def path "16.test.txt")
+      (def path "16.txt")
+      # (def path "16.test.txt")
+      # (def path "16.test2.txt")
       (def model (model-from-file path))
       (print (problem1 model))
       (print (problem2 model)))))
