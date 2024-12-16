@@ -86,22 +86,16 @@
     (def score (score-queue 0))
     (array/remove score-queue 0)
     (def moves (moves-by-score score))
-    (set (moves-by-score score) nil) # TODO: Remove and see if it's faster
+    (set (moves-by-score score) nil) # Unnecessary but helps speed
     [score moves])
 
-  # To enqueue a move at a score,
-  # - Get the bucket for the score
-  #   - If it doesn't exist,
-  #     - Add it, an empty array, to the buckets by score table
-  #     - Insert the score in the score list
-  # - Push the move on the array
   (defn enqueue-scored-move [score move]
     (var moves (moves-by-score score))
     (if (nil? moves)
       (do
         (set moves @[move])
         (set (moves-by-score score) moves)
-        # TODO: Binary search instead to reduce by O(n)
+        # Could binary search and insert instead to reduce by O(n)
         (array/push score-queue score)
         (sort score-queue))
       (array/push moves move)))
