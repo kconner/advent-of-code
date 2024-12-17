@@ -23,17 +23,24 @@
 # - what do you get if you use commas to join the values it output into a single
 #   string?
 
-
-
 (defn model-from-file [path]
   (->> (slurp path)
-       (peg/match ~{:main (/ (* :registers "\n" :program)
-                             ,|{:registers $0 :program $1 :ip 0})
+       (peg/match ~{:main (/ (* :registers "\n" :memory)
+                             ,|{:registers $0 :memory $1 :ip 0})
                     :registers (/ (* :register :register :register)
                                   ,|@{:a $0 :b $1 :c $2})
                     :register (* "Register " (range "AC") ": " :int "\n")
-                    :program (/ (* "Program: " :int (some (* "," :int)) "\n") ,tuple)
-                    :int (/ (<- (some (choice "-" (range "09")))) ,scan-number)})))
+                    :memory (/ (* "Program: " :int (some (* "," :int)) "\n") ,tuple)
+                    :int (/ (<- (some (choice "-" (range "09")))) ,scan-number)})
+       (first)))
+
+(defn fetch-instruction [memory ip]
+  (assert (<= 0 ip))
+  (assert (not= ip (dec (length memory))))
+  (assert (even? ip))
+  (if (< ip (dec (length memory)))
+    {:action :run :opcode (memory ip) :operand (memory (inc ip))}
+    {:action :halt}))
 
 (defn problem1 [model])
 
