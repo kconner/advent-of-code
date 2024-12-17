@@ -64,35 +64,48 @@
   (def op (case opcode 0 adv 1 bxl 2 bst 3 jnz 4 bxc 5 out 6 bdv 7 cdv))
   (op registers operand))
 
-(defn run [registers memory &opt quine]
+(defn run [registers memory &named quine]
   (default quine false)
   (var ip 0)
+  (var out-count 0)
   (def out-items @[])
-  (while (< ip (dec (length memory)))
-    (def instruction (fetch memory ip))
-    (def {:ip jump-ip :out-item out-item}
-      (execute registers instruction))
-    (when (not (nil? out-item))
-      (array/push out-items out-item))
-    (if (nil? jump-ip)
-      (set ip (+ ip 2))
-      (set ip jump-ip)))
-  out-items)
+  (prompt 'out
+    (while (< ip (dec (length memory)))
+      (def instruction (fetch memory ip))
+      (def {:ip jump-ip :out-item out-item}
+        (execute registers instruction))
+      (when (not (nil? out-item))
+        (when (and quine (not= out-item (memory out-count)))
+          (return 'out nil))
+        (array/push out-items out-item)
+        (set out-count (inc out-count)))
+      (if (nil? jump-ip)
+        (set ip (+ ip 2))
+        (set ip jump-ip)))
+    (if (and quine (not= out-count (length memory)))
+      nil
+      out-items)))
 
 (defn problem1 [{:registers registers :memory memory}]
   (def out-items (run (table/clone registers) memory))
   (string/join (map |(string/format "%d" $) out-items) ","))
 
-(defn problem2 [{:registers registers :memory memory}]
-  (def out-items (run (table/clone registers) memory))
-  #
-  )
+(defn problem2 [{:registers {:b b :c c} :memory memory}]
+  (pp memory)
+  (prompt 'out
+    (for a 0 2147483648
+      (when (= (mod a 100000) 0) (pp a))
+      (def out-items (run @{:a a :b b :c c} memory :quine true))
+      (when (not (nil? out-items))
+        (pp out-items)
+        (return 'out a)))))
 
 (defn main [&]
   (spork/test/timeit
     (do
       (def path "17.txt")
       # (def path "17.test.txt")
+      # (def path "17.test2.txt")
       (def model (model-from-file path))
       (print (problem1 model))
       (print (problem2 model)))))
