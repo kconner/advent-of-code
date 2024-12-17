@@ -1,28 +1,5 @@
 (use ./tools)
 
-# 3-bit computer. a word is a number, 0-7
-# instruction: [opcode operand]
-# - each is one word.
-# program is read into memory and kept there. that's an array
-# instruction pointer is an index into that array
-# halt when trying to read IP out of bounds ("past the end")
-
-# (implemntations of each opcode…)
-
-# Your first task is to determine what the program is trying to output.
-# To do this,
-# - initialize the registers to the given values, then
-# - run the given program,
-#   - collecting any output produced by :out instructions.
-#   - (Always join the values produced by :out instructions with commas.)
-# After one exampleabove program halts, its final output will be
-# 4,6,3,5,6,3,5,2,1,0.
-
-# - initialize the registers to the given values,
-# - then run the program.
-# - what do you get if you use commas to join the values it output into a single
-#   string?
-
 (defn model-from-file [path]
   (->> (slurp path)
        (peg/match
@@ -75,7 +52,7 @@
 
 (defn out [registers operand]
   (def combo (deref-combo registers operand))
-  {:out-item (string/format "%d" (mod combo 8))})
+  {:out-item (mod combo 8)})
 
 (defn bdv [registers operand]
   (div-instruction registers operand :b))
@@ -87,7 +64,8 @@
   (def op (case opcode 0 adv 1 bxl 2 bst 3 jnz 4 bxc 5 out 6 bdv 7 cdv))
   (op registers operand))
 
-(defn run [registers memory]
+(defn run [registers memory &opt quine]
+  (default quine false)
   (var ip 0)
   (def out-items @[])
   (while (< ip (dec (length memory)))
@@ -102,9 +80,13 @@
   out-items)
 
 (defn problem1 [{:registers registers :memory memory}]
-  (string/join (run (table/clone registers) memory) ","))
+  (def out-items (run (table/clone registers) memory))
+  (string/join (map |(string/format "%d" $) out-items) ","))
 
-(defn problem2 [model])
+(defn problem2 [{:registers registers :memory memory}]
+  (def out-items (run (table/clone registers) memory))
+  #
+  )
 
 (defn main [&]
   (spork/test/timeit
