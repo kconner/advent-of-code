@@ -1,16 +1,29 @@
 my @banks = slurp('3.txt').lines;
 
-# problem 1;
+sub jolterinos($digit-count) {
+  my @chops = reverse 0..^$digit-count;
 
-say [+] gather {
-  for @banks -> $bank {
-    # to get the joltage for a line we need to find the first position where the
-    # highest digit of the substring excluding the last digit is found.
-    # then take the substring after that to the end, and find the highest digit.
-    # stitch those two and that's the value.
-    my $first-digit = chop($bank).comb.max;
-    my $bank-tail = $bank.substr($bank.index($first-digit) + 1);
-    my $second-digit = $bank-tail.comb.max;
-    take $first-digit ~ $second-digit;
+  say [+] gather {
+    for @banks -> $bank {
+      my $bank-tail = $bank;
+      
+      # to get the n-digit joltage for a bank we need to find the first position
+      # where the highest digit of the substring, excluding enough digits to
+      # complete it, is found. then take the substring after that to the end,
+      # and repeat. stitch the digits.
+      take [~] gather {
+        for @chops -> $chop-depth {
+          my $max-digit = chop($bank-tail, $chop-depth).comb.max;
+          take $max-digit;
+          $bank-tail = $bank-tail.substr($bank-tail.index($max-digit) + 1);
+        }
+      }
+    }
   }
 }
+
+# problem 1
+jolterinos(2);
+
+# problem 2
+jolterinos(12);
