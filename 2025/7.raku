@@ -1,3 +1,8 @@
+my @lines = slurp('7.txt').lines;
+my ($first-line, @rest-of-lines) = |@lines;
+
+# problem 1
+
 # get all the lines
 # break them into first and rest
 # with the first line, find the first index matching S
@@ -9,9 +14,6 @@
 # remove the index from the beam set
 # add the two adjacent indices to the beam set
 # say the split count
-
-my @lines = slurp('7.txt').lines;
-my ($first-line, @rest-of-lines) = |@lines;
 
 my %beam-index-set;
 %beam-index-set{$first-line.index('S')} = True;
@@ -31,3 +33,29 @@ for @rest-of-lines -> $line {
 }
 
 say $split-count;
+
+# problem 2
+
+# this time, use counts rather than a membership set
+# zero a split beam's count and add that value to both sides
+# at the end, sum the counts
+
+my %beam-counts;
+%beam-counts{$first-line.index('S')} = 1;
+
+for @rest-of-lines -> $line {
+  my %copy = %beam-counts.hash;
+  for %copy -> $pair {
+    my $index = $pair.key();
+    my $count = $pair.value();
+    if $line.comb[$index] eq '^' {
+      %beam-counts{$index}:delete;
+      %beam-counts{$index - 1} //= 0;
+      %beam-counts{$index - 1} += $count;
+      %beam-counts{$index + 1} //= 0;
+      %beam-counts{$index + 1} += $count;
+    }
+  }
+}
+
+say [+] %beam-counts.values;
