@@ -8,10 +8,15 @@ sub square-distance($a, $b) {
 
 my %circuits-by-box;
 my %boxen-by-circuit;
-for @boxen.keys -> $box-index {
-  my $circuit-id = $box-index;
-  %circuits-by-box{$box-index} = $circuit-id;
-  %boxen-by-circuit{$circuit-id} = [$box-index];
+
+sub init-maps() {
+  %circuits-by-box = Map.new;
+  %boxen-by-circuit = Map.new;
+  for @boxen.keys -> $box-index {
+    my $circuit-id = $box-index;
+    %circuits-by-box{$box-index} = $circuit-id;
+    %boxen-by-circuit{$circuit-id} = [$box-index];
+  }
 }
 
 # reassign circuit b boxes to a
@@ -26,14 +31,34 @@ sub merge($ca, $cb) {
   %boxen-by-circuit{$cb}:delete;
 }
 
+# for all pairs of boxen, gather distances and index pairs,
+# order nearest first, keep just the pairs
+my @nearest-box-pairs = @boxen.keys.combinations(2)
+  .map({square-distance(|$_.map({@boxen[$_]})), $_})
+  .sort
+  .map({$_[1]});
+
 # problem 1
 
-# for all pairs of boxen, gather distances and index pairs,
-# order by distance ascending, take the first $join-count, and merge pairs.
+# take the first $join-count, and merge pairs.
 # get the product of the 3 highest box counts.
 
-for @boxen.keys.combinations(2).map({square-distance(|$_.map({@boxen[$_]})), $_}).sort.map({$_[1]})[0..^$join-count] -> $pair {
+init-maps();
+
+for @nearest-box-pairs[0..^$join-count] -> $pair {
   merge(|$pair.map({%circuits-by-box{$_}}));
 }
 
 say [*] %boxen-by-circuit.values>>.elems.sort.reverse[0..^3];
+
+# problem 2
+
+init-maps();
+
+for @nearest-box-pairs -> $pair {
+  merge(|$pair.map({%circuits-by-box{$_}}));
+  if %boxen-by-circuit.elems eq 1 {
+    say [*] $pair.map({@boxen[$_][0]});
+    last;
+  }
+}
